@@ -1,0 +1,8 @@
+Django
+Djangorestframework
+django-cors-headers
+mysqlclient
+ultralytics
+pillow
+torch
+torchvision
