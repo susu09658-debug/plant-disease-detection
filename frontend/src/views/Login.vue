@@ -69,14 +69,6 @@
                 />
               </el-form-item>
 
-              <el-form-item prop="email">
-                <el-input
-                  v-model="registerForm.email"
-                  placeholder="企业邮箱 (example@company.com)"
-                  prefix-icon="Document"
-                />
-              </el-form-item>
-
               <el-form-item prop="phone">
                 <el-input
                   v-model="registerForm.phone"
@@ -105,25 +97,6 @@
                 />
               </el-form-item>
 
-              <el-form-item prop="smsCode" class="sms-code-item">
-                <el-input
-                  v-model="registerForm.smsCode"
-                  placeholder="请输入短信验证码"
-                  prefix-icon="Message"
-                >
-                  <template #append>
-                    <el-button
-                      type="primary"
-                      size="small"
-                      :disabled="smsCountdown > 0 || !registerForm.phone"
-                      @click="sendSmsCode"
-                    >
-                      {{ smsCountdown > 0 ? `${smsCountdown}s 后重发` : '获取验证码' }}
-                    </el-button>
-                  </template>
-                </el-input>
-              </el-form-item>
-
               <el-form-item prop="agreed">
                 <el-checkbox v-model="registerForm.agreed">
                   我已阅读并同意
@@ -137,7 +110,7 @@
                 注册
               </el-button>
 
-              <div class="hint">注册后请前往企业邮箱完成账号激活。</div>
+              <div class="hint">注册成功后可直接使用用户名和密码登录。</div>
             </el-form>
           </el-tab-pane>
         </el-tabs>
@@ -152,9 +125,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { User, Lock, Iphone, Document } from '@element-plus/icons-vue';
+import { User, Lock, Iphone } from '@element-plus/icons-vue';
 import request from '../api/request';
 import { useRouter } from 'vue-router';
 
@@ -168,16 +141,13 @@ const loginFormRef = ref(null);
 const registerFormRef = ref(null);
 
 const loginForm = reactive({ username: '', password: '', remember: true, captcha: '' });
-const registerForm = reactive({ username: '', email: '', phone: '', password: '', confirmPassword: '', smsCode: '', agreed: false });
+const registerForm = reactive({ username: '', phone: '', password: '', confirmPassword: '', agreed: false });
 
 const captchaImage = ref('');
 const captchaToken = ref('');
-const smsCountdown = ref(0);
 const loginFailCount = ref(0);
 const isLocked = ref(false);
 const lockEndTime = ref(0);
-
-const smsButtonText = computed(() => (smsCountdown.value > 0 ? `${smsCountdown.value}s后重发` : '获取验证码'));
 
 const encrypt = (text) => {
   try {
@@ -213,7 +183,7 @@ const removeCookie = (name) => {
 
 const refreshCaptcha = async () => {
   try {
-    const res = await request.get('/auth/captcha/');
+    const res = await request.get('/user/captcha/');
     captchaImage.value = res.data?.image || '';
     captchaToken.value = res.data?.token || '';
     loginForm.captcha = '';
@@ -224,38 +194,6 @@ const refreshCaptcha = async () => {
 
 const validPhone = (phone) => /^1[3-9]\d{9}$/.test(phone);
 
-const sendSmsCode = async () => {
-  if (smsCountdown.value > 0) return;
-  if (!validPhone(registerForm.phone)) {
-    ElMessage.warning('请先输入有效手机号');
-    return;
-  }
-  if (!registerForm.captcha) {
-    ElMessage.warning('请先输入图形验证码');
-    return;
-  }
-
-  try {
-    await request.post('/user/sms-code/', {
-      phone: registerForm.phone,
-      captcha: registerForm.captcha,
-      captcha_token: captchaToken.value
-    });
-
-    ElMessage.success('短信验证码已发送');
-    smsCountdown.value = 60;
-    const interval = setInterval(() => {
-      smsCountdown.value -= 1;
-      if (smsCountdown.value <= 0) {
-        clearInterval(interval);
-      }
-    }, 1000);
-  } catch (error) {
-    ElMessage.error(error?.response?.data?.message || '发送验证码失败，请稍后再试');
-    refreshCaptcha();
-  }
-};
-
 const openPolicy = (type) => {
   const url = type === 'terms' ? '/terms' : '/privacy';
   window.open(url, '_blank');
@@ -264,13 +202,6 @@ const openPolicy = (type) => {
 const validatePhone = (rule, value, callback) => {
   if (!value) return callback(new Error('手机号不能为空'));
   if (!validPhone(value)) return callback(new Error('请输入正确的11位手机号'));
-  callback();
-};
-
-const validateEmail = (rule, value, callback) => {
-  const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
-  if (!value) return callback(new Error('邮箱不能为空'));
-  if (!emailRegex.test(value)) return callback(new Error('请输入有效企业邮箱'));
   callback();
 };
 
@@ -300,11 +231,9 @@ const loginRules = reactive({
 
 const registerRules = reactive({
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }, { min: 2, max: 20, message: '长度2到20个字符', trigger: 'blur' }],
-  email: [{ required: true, validator: validateEmail, trigger: 'blur' }],
   phone: [{ required: true, validator: validatePhone, trigger: 'blur' }],
   password: [{ required: true, validator: validatePassword, trigger: 'blur' }],
   confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'blur' }],
-  smsCode: [{ required: true, message: '请输入短信验证码', trigger: 'blur' }],
   agreed: [{ required: true, validator: validateAgreement, trigger: 'change' }]
 });
 
@@ -361,7 +290,7 @@ const handleLogin = async () => {
   } catch (error) {
     loginFailCount.value += 1;
     if (loginFailCount.value >= 5) startLock();
-    const msg = error?.response?.data?.message || error.message || '登录失败，请检查用户名密码';
+    const msg = error?.response?.data?.msg || error.message || '登录失败，请检查用户名密码';
     ElMessage.error(msg);
     refreshCaptcha();
   } finally {
@@ -378,17 +307,15 @@ const handleRegister = async () => {
   try {
     await request.post('/user/register/', {
       username: registerForm.username,
-      email: registerForm.email,
       phone: registerForm.phone,
-      password: registerForm.password,
-      sms_code: registerForm.smsCode
+      password: registerForm.password
     });
 
-    ElMessage.success('注册成功，请前往邮箱激活账户');
+    ElMessage.success('注册成功，请登录系统');
     registerFormRef.value.resetFields();
     activeTab.value = 'login';
   } catch (error) {
-    const msg = error?.response?.data?.message || error.message || '注册失败，请重试';
+    const msg = error?.response?.data?.msg || error.message || '注册失败，请重试';
     ElMessage.error(msg);
   } finally {
     loadingRegister.value = false;
@@ -486,8 +413,7 @@ onMounted(() => {
   font-size: 13px;
 }
 
-.captcha-item,
-.sms-code-item {
+.captcha-item {
   display: grid;
   align-items: center;
   grid-template-columns: 1fr auto;

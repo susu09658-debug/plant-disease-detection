@@ -72,23 +72,6 @@ class CaptchaView(APIView):
         })
 
 
-class SmsCodeView(APIView):
-    """短信验证码占位接口（用于打通前端流程）"""
-
-    def post(self, request):
-        phone = request.data.get("phone")
-        captcha = request.data.get("captcha")
-        captcha_token = request.data.get("captcha_token")
-
-        if not phone:
-            return Response({"code": 400, "msg": "手机号不能为空", "data": None})
-
-        if not _check_captcha(captcha_token, captcha):
-            return Response({"code": 400, "msg": "图形验证码错误或已过期", "data": None})
-
-        return Response({"code": 200, "msg": "短信验证码已发送(演示模式)", "data": None})
-
-
 class RegisterView(APIView):
     """用户注册接口"""
 

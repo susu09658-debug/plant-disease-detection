@@ -75,10 +75,16 @@ plant-disease-detectio/
 ## 五、接口设计（RESTful）
 - 用户注册：POST /api/user/register/
 - 用户登录：POST /api/user/login/
+- 图形验证码：GET /api/user/captcha/
 - 图片检测：POST /api/detect/upload/（模型推理预留）
 - 检测历史：GET /api/detect/history/，DELETE /api/detect/history/
 - 知识库列表：GET /api/knowledge/list/
 - 知识库管理：POST/PUT/DELETE /api/knowledge/manage/
+
+### 认证流程说明
+- 注册：仅需用户名、手机号、密码，不使用短信验证码
+- 登录：需输入用户名、密码、图形验证码
+- 图形验证码有效期：5分钟（后端缓存）
 
 ## 六、开发环境与配置
 - 前端：Node.js 16+，VS Code，npm install
