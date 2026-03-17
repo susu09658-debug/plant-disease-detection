@@ -184,8 +184,8 @@ const removeCookie = (name) => {
 const refreshCaptcha = async () => {
   try {
     const res = await request.get('/user/captcha/');
-    captchaImage.value = res.data?.image || '';
-    captchaToken.value = res.data?.token || '';
+    captchaImage.value = res?.data?.image || '';
+    captchaToken.value = res?.data?.token || '';
     loginForm.captcha = '';
   } catch (error) {
     ElMessage.error('验证码加载失败，请稍后再试');
@@ -271,10 +271,10 @@ const handleLogin = async () => {
       captcha_token: captchaToken.value
     });
 
-    const token = res.data?.token;
+    const token = res?.data?.token;
     if (!token) throw new Error('服务端未返回令牌');
 
-    const userInfo = res.data?.user_info || {};
+    const userInfo = res?.data?.user_info || {};
     localStorage.setItem('token', token);
     localStorage.setItem('userInfo', JSON.stringify(userInfo));
 
@@ -286,7 +286,7 @@ const handleLogin = async () => {
 
     loginFailCount.value = 0;
     ElMessage.success('登录成功，进入系统...');
-    await router.push('/index');
+    await router.push({ name: 'index' });
   } catch (error) {
     loginFailCount.value += 1;
     if (loginFailCount.value >= 5) startLock();
