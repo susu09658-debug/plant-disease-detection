@@ -25,7 +25,8 @@ SECRET_KEY = 'django-insecure-cdy^c$9*g!1l7xw5opg6zcc6qqul9*n-w133n&%=izbwfn^zp6
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# NOTE: In production, restrict ALLOWED_HOSTS to specific domains
+ALLOWED_HOSTS = ['*']  # Allow all hosts in development; restrict in production
 
 
 # Application definition
@@ -39,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',      # 跨域模块
     'rest_framework',   # DRF 接口模块
+    'django_filters',   # 过滤器模块
     'apps.user',        # 用户模块
     'apps.detect',      # 检测模块
     'apps.knowledge',   # 知识库模块
@@ -47,8 +49,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    # ... 其他默认中间件 ...
-    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -56,7 +56,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
 CORS_ALLOW_ALL_ORIGINS = True
+
 ROOT_URLCONF = 'backend.urls'
 
 TEMPLATES = [
@@ -83,9 +85,9 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'plant_disease_db',   # 你的数据库名
-        'USER': 'root',               # 你的MySQL账号，通常是root
-        'PASSWORD': '123456',    # 请替换为你真实的数据库密码
+        'NAME': 'plant_disease_db',
+        'USER': 'root',
+        'PASSWORD': '123456',
         'HOST': '127.0.0.1',
         'PORT': '3306',
     }
@@ -114,9 +116,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'zh-hans'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Shanghai'
 
 USE_I18N = True
 
@@ -127,3 +129,35 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Media files (user uploads and detection results)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Default primary key field type
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Cache configuration (使用内置内存缓存)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'plant-disease-cache',
+    }
+}
+
+# JWT configuration
+JWT_SECRET_KEY = SECRET_KEY
+JWT_EXPIRY_DAYS = 7
+
+# YOLO model configuration
+YOLO_MODEL_PATH = BASE_DIR.parent / 'model' / 'best.pt'
+
+# DRF configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'utils.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+}

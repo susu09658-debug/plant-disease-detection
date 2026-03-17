@@ -6,8 +6,12 @@ import string
 
 from PIL import Image, ImageDraw, ImageFont
 from django.core.cache import cache
+from django.contrib.auth.hashers import make_password, check_password
+from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from utils.authentication import JWTAuthentication
+from utils.jwt_utils import generate_token
 
 from .models import User
 from .serializers import RegisterSerializer, UserSerializer
@@ -43,11 +47,9 @@ def _make_captcha_image(text):
 def _check_captcha(token, user_input, delete_after_verify=False):
     if not token or not user_input:
         return False
-
     expected = cache.get(f"captcha:{token}")
     if not expected:
         return False
-
     matched = expected.lower() == str(user_input).strip().lower()
     if matched and delete_after_verify:
         cache.delete(f"captcha:{token}")
@@ -56,6 +58,8 @@ def _check_captcha(token, user_input, delete_after_verify=False):
 
 class CaptchaView(APIView):
     """图形验证码接口"""
+    authentication_classes = []
+    permission_classes = []
 
     def get(self, request):
         text = _make_captcha_text()
@@ -74,6 +78,8 @@ class CaptchaView(APIView):
 
 class RegisterView(APIView):
     """用户注册接口"""
+    authentication_classes = []
+    permission_classes = []
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -85,6 +91,8 @@ class RegisterView(APIView):
 
 class LoginView(APIView):
     """用户登录接口"""
+    authentication_classes = []
+    permission_classes = []
 
     def post(self, request):
         username = request.data.get('username')
@@ -98,26 +106,135 @@ class LoginView(APIView):
         if not _check_captcha(captcha_token, captcha, delete_after_verify=True):
             return Response({"code": 400, "msg": "图形验证码错误或已过期"})
 
-        # 将前端传来的明文密码进行同样的 MD5 加密，再与数据库比对
-        md5 = hashlib.md5()
-        md5.update(password.encode('utf-8'))
-        hashed_password = md5.hexdigest()
+        user = User.objects.filter(username=username).first()
+        if not user or not check_password(password, user.password):
+            return Response({"code": 401, "msg": "用户名或密码错误"})
 
-        # 查询数据库比对账号密码
-        user = User.objects.filter(username=username, password=hashed_password).first()
+        if user.is_active == 0:
+            return Response({"code": 403, "msg": "账号已被禁用，请联系管理员"})
 
-        if user:
-            # 登录成功，返回用户信息及一个简易的身份凭证(Token)
-            serializer = UserSerializer(user)
-            return Response(
-                {
-                    "code": 200,
-                    "msg": "登录成功",
-                    "data": {
-                        "token": f"user_token_{user.id}",
-                        "user_info": serializer.data,
-                    },
-                }
-            )
+        # 更新最后登录时间
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login'])
 
-        return Response({"code": 401, "msg": "用户名或密码错误"})
+        token = generate_token(user.id, user.username, user.is_admin)
+        serializer = UserSerializer(user)
+        return Response({
+            "code": 200,
+            "msg": "登录成功",
+            "data": {
+                "token": token,
+                "user_info": serializer.data,
+            },
+        })
+
+
+class LogoutView(APIView):
+    """用户登出接口"""
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        return Response({"code": 200, "msg": "登出成功", "data": None})
+
+
+class ProfileView(APIView):
+    """个人信息接口"""
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response({"code": 200, "msg": "获取成功", "data": serializer.data})
+
+    def put(self, request):
+        user = request.user
+        # 只允许修改 phone 和 email
+        phone = request.data.get('phone')
+        email = request.data.get('email')
+        if phone:
+            user.phone = phone
+        if email is not None:
+            user.email = email
+        user.save(update_fields=['phone', 'email'])
+        serializer = UserSerializer(user)
+        return Response({"code": 200, "msg": "更新成功", "data": serializer.data})
+
+
+class PasswordView(APIView):
+    """修改密码接口"""
+    authentication_classes = [JWTAuthentication]
+
+    def put(self, request):
+        user = request.user
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+
+        if not old_password or not new_password:
+            return Response({"code": 400, "msg": "旧密码和新密码不能为空"})
+
+        if not check_password(old_password, user.password):
+            return Response({"code": 400, "msg": "旧密码错误"})
+
+        user.password = make_password(new_password)
+        user.save(update_fields=['password'])
+        return Response({"code": 200, "msg": "密码修改成功", "data": None})
+
+
+class AdminUserListView(APIView):
+    """管理员：用户列表"""
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        if not request.user or request.user.is_admin != 1:
+            return Response({"code": 403, "msg": "无权限"})
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+        keyword = request.query_params.get('keyword', '')
+
+        queryset = User.objects.all().order_by('-create_time')
+        if keyword:
+            queryset = queryset.filter(username__icontains=keyword)
+
+        total = queryset.count()
+        start = (page - 1) * page_size
+        users = queryset[start:start + page_size]
+        serializer = UserSerializer(users, many=True)
+        return Response({
+            "code": 200,
+            "msg": "查询成功",
+            "data": {
+                "total": total,
+                "list": serializer.data,
+                "page": page,
+                "page_size": page_size,
+            }
+        })
+
+
+class AdminUserDetailView(APIView):
+    """管理员：编辑/删除用户"""
+    authentication_classes = [JWTAuthentication]
+
+    def put(self, request, pk):
+        if not request.user or request.user.is_admin != 1:
+            return Response({"code": 403, "msg": "无权限"})
+        user = User.objects.filter(id=pk).first()
+        if not user:
+            return Response({"code": 404, "msg": "用户不存在"})
+
+        is_active = request.data.get('is_active')
+        is_admin = request.data.get('is_admin')
+        if is_active is not None:
+            user.is_active = int(is_active)
+        if is_admin is not None:
+            user.is_admin = int(is_admin)
+        user.save(update_fields=['is_active', 'is_admin'])
+        serializer = UserSerializer(user)
+        return Response({"code": 200, "msg": "更新成功", "data": serializer.data})
+
+    def delete(self, request, pk):
+        if not request.user or request.user.is_admin != 1:
+            return Response({"code": 403, "msg": "无权限"})
+        if str(request.user.id) == str(pk):
+            return Response({"code": 400, "msg": "不能删除自己"})
+        User.objects.filter(id=pk).delete()
+        return Response({"code": 200, "msg": "删除成功", "data": None})
