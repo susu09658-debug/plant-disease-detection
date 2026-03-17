@@ -1,0 +1,23 @@
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+db.sqlite3
+media/  # 存放用户上传的病害图片，不进仓库
+
+# Node / Vue
+node_modules/
+dist/
+.DS_Store
+
+# YOLO / AI 相关
+runs/   # 训练产生的日志和中间权重
+*.pt    # 除非是最终模型，否则不建议全部提交
+datasets/ # 原始数据集通常很大，不进仓库
+
+# IDE
+.vscode/
+.idea/
