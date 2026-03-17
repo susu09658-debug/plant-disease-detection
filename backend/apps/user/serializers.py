@@ -1,7 +1,6 @@
-# apps/user/serializers.py
 from rest_framework import serializers
+from django.contrib.auth.hashers import make_password
 from .models import User
-import hashlib
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -9,7 +8,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'phone', 'create_time', 'is_admin']
+        fields = ['id', 'username', 'phone', 'email', 'avatar', 'is_admin', 'is_active', 'create_time', 'last_login']
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -20,11 +19,5 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ['username', 'password', 'phone']
 
     def create(self, validated_data):
-        # 针对毕设级别的安全性，我们使用 MD5 对密码进行基础加密
-        pwd = validated_data['password']
-        md5 = hashlib.md5()
-        md5.update(pwd.encode('utf-8'))
-        validated_data['password'] = md5.hexdigest()
-
-        # 将加密后的数据存入数据库
+        validated_data['password'] = make_password(validated_data['password'])
         return User.objects.create(**validated_data)

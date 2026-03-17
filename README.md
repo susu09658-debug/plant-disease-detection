@@ -1,114 +1,103 @@
-# 基于YOLOv11的植物病害检测系统
+# 基于 YOLOv11 的植物病害智能检测系统
 
 ## 一、项目简介
-本项目为本科毕业设计，采用前后端分离架构，集成YOLOv11轻量化目标检测模型，实现植物叶片病害的智能识别。系统包含用户管理、病害检测、历史记录、病害知识库、管理员管理等核心功能，适配VS Code（前端）+ PyCharm（后端）开发。
+
+本项目为本科毕业设计，采用前后端分离架构，集成 YOLOv11 轻量化目标检测模型，实现植物叶片病害的智能识别与管理。
 
 ## 二、技术栈
-| 层次   | 技术选型                        |
-|--------|---------------------------------|
-| 前端   | Vue3 + Vite + Element Plus + Axios |
-| 后端   | Django 4.2 + DRF + PyTorch      |
-| AI     | YOLOv11（ultralytics官方库）     |
-| 数据库 | MySQL 8.0                       |
-| 依赖   | django-cors-headers（跨域）      |
 
-## 三、项目结构
+| 层次      | 技术选型                                         |
+|-----------|-------------------------------------------------|
+| 前端      | Vue 3 + Vite + Element Plus + Pinia + Axios      |
+| 后端      | Django 6.0.3 + Django REST Framework 3.15.2      |
+| 认证      | JWT（PyJWT 2.10.1）                               |
+| AI 模型   | YOLOv11（ultralytics）                            |
+| 数据库    | MySQL 8.0                                       |
+| 跨域      | django-cors-headers 4.6.0                        |
+
+## 三、功能模块
+
+- **登录注册**：用户名+密码+图形验证码登录，PBKDF2 加密存储密码
+- **JWT 认证**：安全的 Token 认证，7天有效期，自动续期
+- **系统首页**：检测统计卡片 + 近7天趋势图 + 病害分布图
+- **病害检测**：拖拽上传图片，调用 YOLOv11 推理，展示标注结果
+- **历史记录**：分页列表，支持搜索、单条/批量删除，查看详情
+- **知识库**：病害知识卡片展示，支持按植物/病害名搜索，点击查看详情
+- **个人中心**：查看/修改个人信息、修改密码
+- **管理后台**（管理员专属）：用户管理（启用/禁用/设管理员/删除）、知识库管理（增删改查）
+
+## 四、项目结构
+
 ```
-plant-disease-detectio/
-├── frontend/    # 前端项目（Vue3）
-├── backend/     # 后端项目（Django）
-├── model/       # YOLOv11权重文件
-├── docs/        # 设计文档
-└── README.md    # 项目说明
+plant-disease-detection/
+├── frontend/                # 前端项目（Vue3 + Vite）
+│   └── src/
+│       ├── api/             # API 封装（request.js, user.js, detect.js, knowledge.js, admin.js）
+│       ├── layouts/         # 布局组件（MainLayout.vue）
+│       ├── store/           # Pinia 状态管理（user.js）
+│       ├── router/          # 路由配置（含守卫）
+│       └── views/           # 页面组件
+├── backend/                 # 后端项目（Django 6.0.3）
+│   ├── apps/
+│   │   ├── user/            # 用户模块
+│   │   ├── detect/          # 检测模块
+│   │   └── knowledge/       # 知识库模块
+│   ├── utils/
+│   │   ├── jwt_utils.py     # JWT 工具
+│   │   ├── authentication.py # DRF 认证类
+│   │   ├── permissions.py   # 权限类
+│   │   └── yolo_model.py    # YOLOv11 推理封装
+│   └── requirements.txt
+├── model/                   # YOLOv11 权重文件目录（best.pt）
+└── docs/                    # 设计文档
+    ├── system-design.md
+    ├── api-docs.md
+    └── database-design.md
 ```
 
-### 1. 前端目录
-- public/：静态资源
-- src/api/：接口封装（user.js、detect.js、admin.js等）
-- src/views/：页面组件（Login、Register、Index、History、Knowledge等）
-- src/components/：公共组件
-- src/router/：路由配置
-- src/store/：状态管理
-- src/utils/：工具函数
-- App.vue、main.js：入口
+## 五、快速启动
 
-### 2. 后端目录
-- apps/user/：用户模块（注册、登录、信息）
-- apps/detect/：病害检测模块（历史、上传、推理接口预留）
-- apps/knowledge/：病害知识库模块
-- backend/settings.py：全局配置（数据库、跨域、模型）
-- backend/urls.py：总路由
-- utils/yolo_model.py：YOLOv11推理工具（预留）
-- requirements.txt：依赖清单
+### 环境要求
 
-## 四、数据库设计
-### 1. 用户表 user_user
-| 字段         | 类型         | 说明         |
-|--------------|--------------|--------------|
-| id           | int          | 用户ID       |
-| username     | varchar(20)  | 用户名       |
-| password     | varchar(100) | 加密密码     |
-| phone        | varchar(11)  | 手机号       |
-| create_time  | datetime     | 创建时间     |
-| is_admin     | tinyint      | 是否管理员   |
+- Python 3.10+
+- Node.js 18+
+- MySQL 8.0
 
-### 2. 检测历史表 detect_record
-| 字段         | 类型         | 说明         |
-|--------------|--------------|--------------|
-| id           | int          | 记录ID       |
-| user_id      | int          | 关联用户ID   |
-| original_img | varchar(255) | 原始图片路径 |
-| result_img   | varchar(255) | 标注图片路径 |
-| disease_name | varchar(50)  | 病害名称     |
-| confidence   | float        | 置信度       |
-| detect_time  | datetime     | 检测时间     |
+### 后端启动
 
-### 3. 病害知识库表 knowledge_info
-| 字段         | 类型         | 说明         |
-|--------------|--------------|--------------|
-| id           | int          | 病害ID       |
-| plant_name   | varchar(30)  | 植物名称     |
-| disease_name | varchar(50)  | 病害名称     |
-| symptom      | text         | 病害症状     |
-| treatment    | text         | 防治方法     |
+```bash
+cd backend
+pip install -r requirements.txt
+# 创建数据库
+mysql -u root -p -e "CREATE DATABASE plant_disease_db DEFAULT CHARACTER SET utf8mb4;"
+# 执行迁移
+python manage.py migrate
+# 启动开发服务器
+python manage.py runserver
+```
 
-## 五、接口设计（RESTful）
-- 用户注册：POST /api/user/register/
-- 用户登录：POST /api/user/login/
-- 图形验证码：GET /api/user/captcha/
-- 图片检测：POST /api/detect/upload/（模型推理预留）
-- 检测历史：GET /api/detect/history/，DELETE /api/detect/history/
-- 知识库列表：GET /api/knowledge/list/
-- 知识库管理：POST/PUT/DELETE /api/knowledge/manage/
+### 前端启动
 
-### 认证流程说明
-- 注册：仅需用户名、手机号、密码，不使用短信验证码
-- 登录：需输入用户名、密码、图形验证码
-- 图形验证码有效期：5分钟（后端缓存）
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-## 六、开发环境与配置
-- 前端：Node.js 16+，VS Code，npm install
-- 后端：Python 3.9+，PyCharm，pip install -r requirements.txt
-- 数据库：MySQL 8.0，Navicat
-- 跨域：已配置django-cors-headers，Vite代理
+访问：http://localhost:5173
 
-## 七、部署与运行
-- 前端启动：cd frontend && npm run dev
-- 后端启动：cd backend && python manage.py runserver
-- 数据库：本地MySQL服务，建库plant_disease_db
-- 模型：权重文件放入model/目录，后端utils/yolo_model.py集成
+### YOLO 模型
 
-## 八、功能亮点
-- 标准前后端分离，接口清晰，易于扩展
-- 支持用户注册、登录、检测、历史、知识库、管理员管理
-- YOLOv11推理接口预留，便于后续AI集成
-- 代码结构规范，适合毕设/竞赛/二次开发
+将训练好的 `best.pt` 权重文件放置到 `model/` 目录下。如果模型文件不存在，系统会自动返回模拟数据，不影响其他功能使用。
 
-## 九、后续可扩展方向
-- 集成YOLOv11模型推理与图片上传
-- 支持批量检测、移动端适配
-- 增加数据统计与可视化
-- 优化权限与安全机制
+## 六、API 接口
 
----
-如需详细设计文档、接口文档、数据库脚本等，请见docs/目录。
+详见 [docs/api-docs.md](docs/api-docs.md)
+
+## 七、数据库设计
+
+详见 [docs/database-design.md](docs/database-design.md)
+
+## 八、系统架构
+
+详见 [docs/system-design.md](docs/system-design.md)
