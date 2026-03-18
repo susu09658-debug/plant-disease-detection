@@ -7,7 +7,7 @@
       <template #header><span class="card-title">🤖 模型信息</span></template>
       <el-descriptions :column="3" border>
         <el-descriptions-item label="模型版本">
-          <el-tag type="primary">{{ modelInfo.model_version || 'YOLOv8n' }}</el-tag>
+          <el-tag type="primary">{{ modelInfo.model_version || 'YOLOv11n' }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="类别数量">{{ modelInfo.num_classes || 10 }}</el-descriptions-item>
         <el-descriptions-item label="输入尺寸">{{ modelInfo.input_size || 640 }} × {{ modelInfo.input_size || 640 }}</el-descriptions-item>
@@ -29,7 +29,7 @@
     <el-card shadow="never" class="section-card">
       <template #header><span class="card-title">⚙️ 训练配置</span></template>
       <el-descriptions :column="3" border>
-        <el-descriptions-item label="预训练模型">{{ trainConfig.model || 'yolov8n.pt' }}</el-descriptions-item>
+        <el-descriptions-item label="预训练模型">{{ trainConfig.model || 'yolo11n.pt' }}</el-descriptions-item>
         <el-descriptions-item label="训练轮数">{{ trainConfig.epochs || 100 }}</el-descriptions-item>
         <el-descriptions-item label="批次大小">{{ trainConfig.batch || 16 }}</el-descriptions-item>
         <el-descriptions-item label="优化器">{{ trainConfig.optimizer || 'SGD' }}</el-descriptions-item>
@@ -101,7 +101,7 @@
       <template #header><span class="card-title">📋 实验设计说明</span></template>
       <div class="experiment-desc">
         <h4>一、实验目的</h4>
-        <p>验证基于 YOLOv8 目标检测模型在植物病害识别任务中的有效性，通过在自建植物病害数据集上训练并评估模型性能，证明该方法在实际植物病害检测场景中具有可行性和良好的检测精度。</p>
+        <p>验证基于 YOLOv11 目标检测模型在植物病害识别任务中的有效性，通过在 PlantDoc 植物病害数据集上训练并评估模型性能，证明该方法在实际植物病害检测场景中具有可行性和良好的检测精度。</p>
 
         <h4>二、实验环境</h4>
         <el-descriptions :column="2" border size="small">
@@ -109,12 +109,12 @@
           <el-descriptions-item label="GPU">NVIDIA GeForce RTX 3060 (12GB)</el-descriptions-item>
           <el-descriptions-item label="深度学习框架">PyTorch 2.x + Ultralytics</el-descriptions-item>
           <el-descriptions-item label="Python 版本">3.10+</el-descriptions-item>
-          <el-descriptions-item label="检测模型">YOLOv8n / YOLOv8s</el-descriptions-item>
+          <el-descriptions-item label="检测模型">YOLOv11n / YOLOv11s</el-descriptions-item>
           <el-descriptions-item label="输入分辨率">640 × 640</el-descriptions-item>
         </el-descriptions>
 
         <h4>三、数据集</h4>
-        <p>本实验使用基于 PlantVillage 公开数据集处理得到的植物病害目标检测数据集，包含 {{ modelInfo.num_classes || 10 }} 个类别，涵盖番茄、苹果、玉米、葡萄、马铃薯、草莓等常见农作物的健康与病害样本。数据集按 8:1:1 的比例划分为训练集、验证集和测试集。</p>
+        <p>本实验使用 Kaggle 上的 PlantDoc 公开数据集进行植物病害目标检测，包含 {{ modelInfo.num_classes || 28 }} 个类别，涵盖苹果、甜椒、蓝莓、樱桃、玉米、葡萄、桃树、马铃薯、覆盆子、大豆、南瓜、草莓和番茄等常见农作物的健康与病害样本。数据集按 8:1:1 的比例划分为训练集、验证集和测试集。</p>
 
         <h4>四、评估指标</h4>
         <ul>

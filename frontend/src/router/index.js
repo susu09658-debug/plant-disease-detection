@@ -42,6 +42,18 @@ const router = createRouter({
                     meta: { title: '知识库' },
                 },
                 {
+                    path: 'dataset',
+                    name: 'dataset',
+                    component: () => import('../views/DatasetManage.vue'),
+                    meta: { title: '数据集管理' },
+                },
+                {
+                    path: 'training',
+                    name: 'training',
+                    component: () => import('../views/TrainingManage.vue'),
+                    meta: { title: '模型训练' },
+                },
+                {
                     path: 'experiment',
                     name: 'experiment',
                     component: () => import('../views/Experiment.vue'),
