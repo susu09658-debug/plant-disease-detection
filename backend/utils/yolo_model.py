@@ -31,7 +31,7 @@ CLASS_NAME_MAP = {
 
 
 class YOLOModel:
-    """YOLOv11 模型推理工具（单例模式）"""
+    """YOLOv8 模型推理工具（单例模式）"""
 
     _instance = None
     _model = None

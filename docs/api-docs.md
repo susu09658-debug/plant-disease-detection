@@ -233,3 +233,99 @@
 
 - **DELETE** `/api/user/admin/users/<id>/`
 - 认证：Bearer Token（管理员）
+
+---
+
+## 五、实验结果模块 `/api/experiment/`
+
+### 5.1 获取评估指标
+
+- **GET** `/api/experiment/metrics/`
+- 认证：Bearer Token
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "查询成功",
+  "data": {
+    "metrics": {
+      "mAP50": 0.8742,
+      "mAP50_95": 0.6518,
+      "precision": 0.8923,
+      "recall": 0.8456,
+      "f1_score": 0.8683,
+      "train_box_loss": 0.0312,
+      "train_cls_loss": 0.0245,
+      "val_box_loss": 0.0489,
+      "val_cls_loss": 0.0367,
+      "epochs_completed": 100
+    },
+    "train_config": {
+      "model": "yolov8n.pt",
+      "epochs": 100,
+      "batch": 16,
+      "imgsz": 640,
+      "optimizer": "SGD",
+      "lr0": 0.01
+    },
+    "class_names": { "0": "Tomato_Early_Blight", "1": "Tomato_Late_Blight" },
+    "class_names_cn": { "0": "番茄早疫病", "1": "番茄晚疫病" },
+    "num_classes": 10,
+    "charts": { "results": "results.png", "confusion_matrix": "confusion_matrix.png" },
+    "run_name": "plant_disease"
+  }
+}
+```
+
+### 5.2 获取训练曲线
+
+- **GET** `/api/experiment/curves/`
+- 认证：Bearer Token
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "查询成功",
+  "data": {
+    "epochs": [1, 2, 3],
+    "train_box_loss": [0.08, 0.06, 0.04],
+    "train_cls_loss": [0.06, 0.04, 0.03],
+    "val_box_loss": [0.10, 0.08, 0.06],
+    "val_cls_loss": [0.08, 0.06, 0.05],
+    "mAP50": [0.30, 0.55, 0.70],
+    "mAP50_95": [0.15, 0.35, 0.50],
+    "precision": [0.40, 0.60, 0.75],
+    "recall": [0.35, 0.55, 0.70]
+  }
+}
+```
+
+### 5.3 获取模型信息
+
+- **GET** `/api/experiment/model-info/`
+- 认证：Bearer Token
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "查询成功",
+  "data": {
+    "model_loaded": true,
+    "model_path": "/path/to/model/best.pt",
+    "model_version": "yolov8n.pt",
+    "num_classes": 10,
+    "class_names": { "0": "Tomato_Early_Blight" },
+    "class_names_cn": { "0": "番茄早疫病" },
+    "input_size": 640,
+    "file_size_mb": 6.23,
+    "has_train_records": true,
+    "latest_run": "plant_disease"
+  }
+}
+```

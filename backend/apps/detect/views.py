@@ -14,7 +14,7 @@ from .serializers import DetectRecordSerializer
 
 
 class DetectUploadView(APIView):
-    """图片上传与 YOLOv11 检测接口"""
+    """图片上传与 YOLOv8 检测接口"""
     authentication_classes = [JWTAuthentication]
 
     def post(self, request):
@@ -34,7 +34,7 @@ class DetectUploadView(APIView):
 
         original_img_rel = f"uploads/{filename}"
 
-        # 调用 YOLOv11 推理
+        # 调用 YOLOv8 推理
         from utils.yolo_model import yolo_model
         result = yolo_model.detect(str(save_path))
 
