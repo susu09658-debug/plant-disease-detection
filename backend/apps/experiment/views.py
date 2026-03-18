@@ -141,7 +141,7 @@ class ExperimentMetricsView(APIView):
 
         # 训练配置信息
         train_config = {
-            'model': args.get('model', 'yolov8n.pt'),
+            'model': args.get('model', 'yolo11n.pt'),
             'epochs': args.get('epochs', 100),
             'batch': args.get('batch', 16),
             'imgsz': args.get('imgsz', 640),
@@ -290,7 +290,7 @@ class ModelInfoView(APIView):
         model_info = {
             'model_loaded': model_exists,
             'model_path': str(model_path),
-            'model_version': args.get('model', 'yolov8n.pt'),
+            'model_version': args.get('model', 'yolo11n.pt'),
             'num_classes': data_config.get('nc', 0),
             'class_names': data_config.get('names', {}),
             'class_names_cn': data_config.get('names_cn', {}),

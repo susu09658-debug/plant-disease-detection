@@ -1,6 +1,6 @@
 """
-YOLOv8 植物病害检测 - 单张图片推理脚本
-Plant Disease Detection - Single Image Prediction
+YOLOv11 植物病害检测 - 单张图片推理脚本
+Plant Disease Detection - Single Image Prediction (YOLOv11 + PlantDoc)
 
 使用说明:
     python yolo/predict.py --source path/to/image.jpg
@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='YOLOv8 植物病害检测推理')
+    parser = argparse.ArgumentParser(description='YOLOv11 植物病害检测推理')
     parser.add_argument('--model', type=str, default=str(ROOT / 'model' / 'best.pt'),
                         help='模型权重路径')
     parser.add_argument('--source', type=str, required=True,
@@ -55,7 +55,7 @@ def main():
         sys.exit(1)
 
     print('=' * 60)
-    print('  YOLOv8 植物病害检测推理')
+    print('  YOLOv11 植物病害检测推理 (PlantDoc)')
     print('=' * 60)
     print(f'  模型:   {args.model}')
     print(f'  输入:   {args.source}')

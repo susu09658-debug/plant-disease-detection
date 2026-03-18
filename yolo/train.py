@@ -1,11 +1,12 @@
 """
-YOLOv8 植物病害检测 - 模型训练脚本
-Plant Disease Detection - Model Training Script
+YOLOv11 植物病害检测 - 模型训练脚本
+Plant Disease Detection - Model Training Script (YOLOv11 + PlantDoc)
 
 使用说明:
-    python yolo/train.py                          # 使用默认参数训练
-    python yolo/train.py --model yolov8s.pt       # 使用 YOLOv8s 模型
-    python yolo/train.py --epochs 200 --batch 32  # 自定义训练参数
+    python yolo/train.py                           # 使用默认参数训练
+    python yolo/train.py --model yolo11s.pt        # 使用 YOLO11s 模型
+    python yolo/train.py --epochs 200 --batch 32   # 自定义训练参数
+    python yolo/train.py --device 0                # 指定 GPU
 
 训练完成后，最优权重保存在: runs/train/plant_disease/weights/best.pt
 可将 best.pt 复制到 model/ 目录供系统推理使用。
@@ -21,11 +22,11 @@ sys.path.insert(0, str(ROOT))
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='YOLOv8 植物病害检测模型训练')
+    parser = argparse.ArgumentParser(description='YOLOv11 植物病害检测模型训练')
 
     # 模型参数
-    parser.add_argument('--model', type=str, default='yolov8n.pt',
-                        help='预训练模型名称或路径 (yolov8n/s/m/l/x.pt)')
+    parser.add_argument('--model', type=str, default='yolo11n.pt',
+                        help='预训练模型名称或路径 (yolo11n/s/m/l/x.pt)')
     parser.add_argument('--data', type=str, default=str(ROOT / 'yolo' / 'configs' / 'data.yaml'),
                         help='数据集配置文件路径')
 
@@ -65,7 +66,7 @@ def main():
         sys.exit(1)
 
     print('=' * 60)
-    print('  YOLOv8 植物病害检测模型训练')
+    print('  YOLOv11 植物病害检测模型训练 (PlantDoc)')
     print('=' * 60)
     print(f'  模型:     {args.model}')
     print(f'  数据集:   {args.data}')
