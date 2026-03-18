@@ -70,9 +70,35 @@
         </el-descriptions-item>
       </el-descriptions>
 
+      <!-- 检测框详情 -->
+      <div v-if="result.bbox_data && result.bbox_data.length > 1" class="bbox-section">
+        <el-divider content-position="left">检测目标列表</el-divider>
+        <el-table :data="result.bbox_data" size="small" border stripe>
+          <el-table-column prop="label" label="病害类型" width="160" />
+          <el-table-column label="置信度" width="200">
+            <template #default="{ row }">
+              <el-progress
+                :percentage="Math.round((row.confidence || 0) * 100)"
+                :stroke-width="10"
+                :color="getConfColor(row.confidence)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="位置坐标">
+            <template #default="{ row }">
+              [{{ Math.round(row.x1) }}, {{ Math.round(row.y1) }}] →
+              [{{ Math.round(row.x2) }}, {{ Math.round(row.y2) }}]
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
       <div class="action-btns">
         <el-button type="primary" @click="$router.push('/app/history')">
           查看历史记录
+        </el-button>
+        <el-button type="success" @click="$router.push('/app/knowledge')">
+          查看防治知识
         </el-button>
         <el-button @click="resetResult">重新检测</el-button>
       </div>
@@ -198,5 +224,9 @@ const getConfColor = (conf) => {
     margin-top: 20px;
     display: flex;
     gap: 12px;
+}
+
+.bbox-section {
+    margin-top: 10px;
 }
 </style>

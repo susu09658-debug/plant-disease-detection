@@ -4,19 +4,34 @@ from django.conf import settings
 
 # 模拟的病害名称列表（用于模型文件不存在时的降级处理）
 MOCK_DISEASES = [
-    {'name': '番茄叶枯病', 'plant': '番茄'},
-    {'name': '玉米锈病', 'plant': '玉米'},
-    {'name': '水稻稻瘟病', 'plant': '水稻'},
+    {'name': '番茄早疫病', 'plant': '番茄'},
+    {'name': '番茄晚疫病', 'plant': '番茄'},
     {'name': '苹果黑星病', 'plant': '苹果'},
-    {'name': '葡萄霜霉病', 'plant': '葡萄'},
-    {'name': '小麦白粉病', 'plant': '小麦'},
+    {'name': '苹果黑腐病', 'plant': '苹果'},
+    {'name': '玉米锈病', 'plant': '玉米'},
+    {'name': '葡萄黑腐病', 'plant': '葡萄'},
+    {'name': '马铃薯早疫病', 'plant': '马铃薯'},
     {'name': '马铃薯晚疫病', 'plant': '马铃薯'},
-    {'name': '黄瓜炭疽病', 'plant': '黄瓜'},
+    {'name': '草莓叶枯病', 'plant': '草莓'},
 ]
+
+# 英文类名到中文的映射（与 data.yaml 保持一致）
+CLASS_NAME_MAP = {
+    'Tomato_Early_Blight': ('番茄早疫病', '番茄'),
+    'Tomato_Late_Blight': ('番茄晚疫病', '番茄'),
+    'Tomato_Healthy': ('番茄健康', '番茄'),
+    'Apple_Scab': ('苹果黑星病', '苹果'),
+    'Apple_Black_Rot': ('苹果黑腐病', '苹果'),
+    'Corn_Common_Rust': ('玉米锈病', '玉米'),
+    'Grape_Black_Rot': ('葡萄黑腐病', '葡萄'),
+    'Potato_Early_Blight': ('马铃薯早疫病', '马铃薯'),
+    'Potato_Late_Blight': ('马铃薯晚疫病', '马铃薯'),
+    'Strawberry_Leaf_Scorch': ('草莓叶枯病', '草莓'),
+}
 
 
 class YOLOModel:
-    """YOLOv11 模型推理工具（单例模式）"""
+    """YOLOv8 模型推理工具（单例模式）"""
 
     _instance = None
     _model = None
@@ -95,18 +110,24 @@ class YOLOModel:
                 confidence = float(box.conf[0])
                 xyxy = box.xyxy[0].tolist()
                 label = result.names[class_id]
-                disease_name = label
+
+                # 映射为中文名称
+                cn_info = CLASS_NAME_MAP.get(label, (label, ''))
+                disease_name = cn_info[0]
+                plant_name = cn_info[1]
 
                 # 收集所有检测框
                 for b in result.boxes:
                     cid = int(b.cls[0])
                     coords = b.xyxy[0].tolist()
+                    box_label = result.names[cid]
+                    box_cn = CLASS_NAME_MAP.get(box_label, (box_label, ''))
                     bbox_data.append({
                         'x1': coords[0],
                         'y1': coords[1],
                         'x2': coords[2],
                         'y2': coords[3],
-                        'label': result.names[cid],
+                        'label': box_cn[0],
                         'confidence': float(b.conf[0]),
                     })
 

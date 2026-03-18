@@ -42,6 +42,40 @@
       </el-col>
     </el-row>
 
+    <!-- 模型状态 -->
+    <el-card shadow="never" class="model-info-card">
+      <template #header><span class="card-title">🤖 模型状态</span></template>
+      <el-row :gutter="16" align="middle">
+        <el-col :span="6">
+          <div class="model-stat">
+            <span class="model-stat-label">模型版本</span>
+            <el-tag type="primary" size="large">{{ modelInfo.model_version || 'YOLOv8' }}</el-tag>
+          </div>
+        </el-col>
+        <el-col :span="6">
+          <div class="model-stat">
+            <span class="model-stat-label">模型状态</span>
+            <el-tag :type="modelInfo.model_loaded ? 'success' : 'warning'" size="large">
+              {{ modelInfo.model_loaded ? '已加载' : '使用演示模式' }}
+            </el-tag>
+          </div>
+        </el-col>
+        <el-col :span="6">
+          <div class="model-stat">
+            <span class="model-stat-label">检测类别数</span>
+            <span class="model-stat-value">{{ modelInfo.num_classes || 10 }}</span>
+          </div>
+        </el-col>
+        <el-col :span="6">
+          <div class="model-stat">
+            <el-button type="primary" plain @click="$router.push('/app/experiment')">
+              <el-icon><DataAnalysis /></el-icon>&nbsp;查看实验结果
+            </el-button>
+          </div>
+        </el-col>
+      </el-row>
+    </el-card>
+
     <el-row :gutter="16" class="chart-row">
       <!-- 近7天趋势 -->
       <el-col :span="14">
@@ -110,6 +144,7 @@
 import { ref, onMounted } from 'vue';
 import { getStats } from '../api/detect';
 import { getList } from '../api/knowledge';
+import { getModelInfo } from '../api/experiment';
 
 const stats = ref({
     total: 0,
@@ -118,15 +153,18 @@ const stats = ref({
     weekly_trend: [],
 });
 const knowledgeTotal = ref(0);
+const modelInfo = ref({});
 
 const loadData = async () => {
     try {
-        const [statsRes, knowledgeRes] = await Promise.all([
+        const [statsRes, knowledgeRes, modelRes] = await Promise.all([
             getStats(),
             getList({ page: 1, page_size: 1 }),
+            getModelInfo(),
         ]);
         stats.value = statsRes.data;
         knowledgeTotal.value = knowledgeRes.data.total;
+        modelInfo.value = modelRes.data;
     } catch {}
 };
 
@@ -254,5 +292,28 @@ onMounted(loadData);
     display: flex;
     gap: 16px;
     flex-wrap: wrap;
+}
+
+/* 模型信息卡片 */
+.model-info-card {
+    margin-bottom: 16px;
+}
+
+.model-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.model-stat-label {
+    font-size: 13px;
+    color: #909399;
+}
+
+.model-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #303133;
 }
 </style>
