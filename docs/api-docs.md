@@ -263,16 +263,16 @@
       "epochs_completed": 100
     },
     "train_config": {
-      "model": "yolov8n.pt",
+      "model": "yolo11n.pt",
       "epochs": 100,
       "batch": 16,
       "imgsz": 640,
       "optimizer": "SGD",
       "lr0": 0.01
     },
-    "class_names": { "0": "Tomato_Early_Blight", "1": "Tomato_Late_Blight" },
-    "class_names_cn": { "0": "番茄早疫病", "1": "番茄晚疫病" },
-    "num_classes": 10,
+    "class_names": { "0": "Apple_Scab_Leaf", "1": "Apple_leaf" },
+    "class_names_cn": { "0": "苹果黑星病叶", "1": "苹果健康叶" },
+    "num_classes": 28,
     "charts": { "results": "results.png", "confusion_matrix": "confusion_matrix.png" },
     "run_name": "plant_disease"
   }
@@ -318,10 +318,10 @@
   "data": {
     "model_loaded": true,
     "model_path": "/path/to/model/best.pt",
-    "model_version": "yolov8n.pt",
-    "num_classes": 10,
-    "class_names": { "0": "Tomato_Early_Blight" },
-    "class_names_cn": { "0": "番茄早疫病" },
+    "model_version": "yolo11n.pt",
+    "num_classes": 28,
+    "class_names": { "0": "Apple_Scab_Leaf" },
+    "class_names_cn": { "0": "苹果黑星病叶" },
     "input_size": 640,
     "file_size_mb": 6.23,
     "has_train_records": true,
@@ -329,3 +329,118 @@
   }
 }
 ```
+
+### 5.4 获取历史训练记录
+
+- **GET** `/api/experiment/train-history/`
+- 认证：Bearer Token
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "查询成功",
+  "data": {
+    "runs": [
+      {
+        "name": "plant_disease",
+        "model": "yolo11n.pt",
+        "epochs": 100,
+        "epochs_completed": 100,
+        "batch": 16,
+        "imgsz": 640,
+        "optimizer": "SGD",
+        "lr0": 0.01,
+        "has_best_weight": true,
+        "has_last_weight": true,
+        "best_weight_size_mb": 6.23,
+        "metrics": {
+          "mAP50": 0.8742,
+          "mAP50_95": 0.6518,
+          "precision": 0.8923,
+          "recall": 0.8456
+        },
+        "modified_time": "2026-03-18T10:00:00"
+      }
+    ]
+  }
+}
+```
+
+### 5.5 获取训练配置参数
+
+- **GET** `/api/experiment/train-config/`
+- 认证：Bearer Token
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "查询成功",
+  "data": {
+    "config": { "model": "yolo11n.pt", "epochs": 100, "batch": 16 },
+    "model_options": [
+      { "name": "yolo11n.pt", "params": "2.6M", "desc": "超轻量 - 适合快速实验" },
+      { "name": "yolo11s.pt", "params": "9.4M", "desc": "轻量 - 平衡精度与速度" }
+    ],
+    "num_classes": 28,
+    "optimizer_options": ["SGD", "Adam", "AdamW"]
+  }
+}
+```
+
+---
+
+## 六、数据集管理模块 `/api/dataset/`
+
+### 6.1 获取数据集概览
+
+- **GET** `/api/dataset/overview/`
+- 认证：Bearer Token
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "查询成功",
+  "data": {
+    "dataset_exists": true,
+    "dataset_name": "PlantDoc",
+    "dataset_source": "Kaggle (mrigaankbhatt/plantdoc-dataset)",
+    "num_classes": 28,
+    "total_images": 2598,
+    "total_labels": 2598,
+    "splits": {
+      "train": { "images": 2078, "labels": 2078 },
+      "val": { "images": 260, "labels": 260 },
+      "test": { "images": 260, "labels": 260 }
+    },
+    "class_details": [
+      { "id": 0, "name": "Apple_Scab_Leaf", "name_cn": "苹果黑星病叶", "count": 95 }
+    ]
+  }
+}
+```
+
+### 6.2 获取类别列表
+
+- **GET** `/api/dataset/classes/`
+- 认证：Bearer Token
+
+### 6.3 获取样本列表
+
+- **GET** `/api/dataset/samples/?split=train&class_id=0&limit=20`
+- 认证：Bearer Token
+
+### 6.4 获取划分信息
+
+- **GET** `/api/dataset/split-info/`
+- 认证：Bearer Token
+
+### 6.5 验证数据集（管理员）
+
+- **POST** `/api/dataset/validate/`
+- 认证：Bearer Token（管理员）

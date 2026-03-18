@@ -36,10 +36,24 @@
           <template #title>知识库</template>
         </el-menu-item>
 
-        <el-menu-item index="/app/experiment">
-          <el-icon><DataAnalysis /></el-icon>
-          <template #title>实验结果</template>
-        </el-menu-item>
+        <el-sub-menu index="model">
+          <template #title>
+            <el-icon><Cpu /></el-icon>
+            <span>模型与数据</span>
+          </template>
+          <el-menu-item index="/app/dataset">
+            <el-icon><FolderOpened /></el-icon>
+            数据集管理
+          </el-menu-item>
+          <el-menu-item index="/app/training">
+            <el-icon><Aim /></el-icon>
+            模型训练
+          </el-menu-item>
+          <el-menu-item index="/app/experiment">
+            <el-icon><DataAnalysis /></el-icon>
+            实验结果
+          </el-menu-item>
+        </el-sub-menu>
 
         <el-menu-item index="/app/profile">
           <el-icon><User /></el-icon>
