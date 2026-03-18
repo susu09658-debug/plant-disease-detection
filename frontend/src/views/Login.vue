@@ -11,7 +11,6 @@
         </div>
 
         <el-tabs v-model="activeTab" class="auth-tabs" type="border-card">
-          <!-- 登录 Tab -->
           <el-tab-pane label="登录" name="login">
             <el-form ref="loginFormRef" :model="loginForm" :rules="loginRules" label-width="0" size="large">
               <el-form-item prop="username">
@@ -57,7 +56,6 @@
             </el-form>
           </el-tab-pane>
 
-          <!-- 注册 Tab -->
           <el-tab-pane label="注册" name="register">
             <el-form ref="registerFormRef" :model="registerForm" :rules="registerRules" label-width="0" size="large">
               <el-form-item prop="username">
@@ -328,7 +326,7 @@ onMounted(() => {
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: #1b7cff;
+    background: #b7bdbe;
     color: #ffffff;
     display: flex;
     align-items: center;
@@ -390,7 +388,7 @@ onMounted(() => {
 }
 
 :deep(.el-form-item) {
-    margin-bottom: 12px;
+    margin-bottom: 24px; /* 这里从 12px 修改为了 24px，给表单错误提示文字留出足够空间 */
 }
 
 :deep(.el-input__wrapper) {
@@ -405,7 +403,7 @@ onMounted(() => {
 }
 
 :deep(.el-tabs__item.is-active) {
-    color: #0058d9;
+    color: #f6fafb;
     font-weight: 700;
 }
 
