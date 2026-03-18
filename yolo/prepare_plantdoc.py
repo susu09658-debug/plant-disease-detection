@@ -130,7 +130,11 @@ def convert_voc_to_yolo(xml_path, img_width, img_height):
     Returns:
         list: YOLO 格式标注行列表
     """
-    tree = ET.parse(xml_path)
+    try:
+        tree = ET.parse(xml_path)
+    except ET.ParseError as e:
+        print(f'  警告: XML 文件解析失败 {xml_path}: {e}')
+        return []
     root_elem = tree.getroot()
     lines = []
 
@@ -253,6 +257,9 @@ def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
                 print('  错误: 需要安装 Pillow 库来读取图片尺寸')
                 print('    pip install pillow')
                 sys.exit(1)
+            except (OSError, IOError) as e:
+                print(f'  警告: 无法读取图片 {img_path}: {e}，跳过')
+                continue
 
             # 转换标注
             yolo_lines = convert_voc_to_yolo(xml_path, img_w, img_h)
