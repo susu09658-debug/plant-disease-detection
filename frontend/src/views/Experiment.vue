@@ -166,9 +166,9 @@ const classAPMap = ref({});
 
 const getClassAP = (id) => {
   if (classAPMap.value[id] !== undefined) return classAPMap.value[id];
-  // 如果没有真实数据，基于总 mAP 生成合理的模拟值
+  // 如果没有真实数据，基于总 mAP 生成确定性模拟变化量
   const base = (metrics.value.mAP50 || 0.87) * 100;
-  const offset = ((parseInt(id) * 7 + 3) % 15) - 7;  // deterministic variation
+  const offset = ((parseInt(id) * 7 + 3) % 15) - 7;
   return Math.max(60, Math.min(99, Math.round(base + offset)));
 };
 

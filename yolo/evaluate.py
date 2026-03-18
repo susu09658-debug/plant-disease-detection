@@ -105,8 +105,10 @@ def main():
         'mAP50_95': float(metrics.box.map),
         'precision': float(metrics.box.mp),
         'recall': float(metrics.box.mr),
-        'f1_score': float(2 * metrics.box.mp * metrics.box.mr / max(metrics.box.mp + metrics.box.mr, 1e-6)),
     }
+    # F1 = 2PR/(P+R)；当 P 和 R 均为 0 时 F1 直接置 0
+    p, r = results_dict['precision'], results_dict['recall']
+    results_dict['f1_score'] = float(2 * p * r / (p + r)) if (p + r) > 0 else 0.0
 
     print(f'  mAP@0.5:      {results_dict["mAP50"]:.4f}')
     print(f'  mAP@0.5:0.95: {results_dict["mAP50_95"]:.4f}')

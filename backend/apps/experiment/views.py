@@ -132,10 +132,10 @@ class ExperimentMetricsView(APIView):
                 'val_cls_loss': last.get('val/cls_loss', 0),
                 'epochs_completed': len(rows),
             }
-            # 计算 F1
+            # 计算 F1：当 P 和 R 均为 0 时 F1 直接置 0
             p = metrics['precision']
             r = metrics['recall']
-            metrics['f1_score'] = round(2 * p * r / max(p + r, 1e-6), 4)
+            metrics['f1_score'] = round(2 * p * r / (p + r), 4) if (p + r) > 0 else 0.0
         else:
             metrics = self._demo_metrics()
 
@@ -261,12 +261,11 @@ class ExperimentTrainCurvesView(APIView):
 
         for e in epochs:
             t = e / 100.0
-            # 损失曲线：逐渐下降
+            # 使用指数衰减模拟损失下降，使用 1-exp 模拟精度上升
             data['train_box_loss'].append(round(0.08 * math.exp(-3 * t) + 0.02, 4))
             data['train_cls_loss'].append(round(0.06 * math.exp(-3 * t) + 0.015, 4))
             data['val_box_loss'].append(round(0.10 * math.exp(-2.5 * t) + 0.03, 4))
             data['val_cls_loss'].append(round(0.08 * math.exp(-2.5 * t) + 0.025, 4))
-            # 精度曲线：逐渐上升
             data['mAP50'].append(round(0.87 * (1 - math.exp(-4 * t)) + 0.005, 4))
             data['mAP50_95'].append(round(0.65 * (1 - math.exp(-3.5 * t)) + 0.002, 4))
             data['precision'].append(round(0.89 * (1 - math.exp(-4.5 * t)) + 0.003, 4))
