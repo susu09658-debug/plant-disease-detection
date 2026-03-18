@@ -1,6 +1,6 @@
 """
-YOLOv8 植物病害检测 - 模型导出脚本
-Plant Disease Detection - Model Export Utility
+YOLOv11 植物病害检测 - 模型导出脚本
+Plant Disease Detection - Model Export Utility (YOLOv11)
 
 使用说明:
     python yolo/export_model.py                                 # 导出为 ONNX
@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT))
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='YOLOv8 模型导出')
+    parser = argparse.ArgumentParser(description='YOLOv11 模型导出')
     parser.add_argument('--model', type=str, default=str(ROOT / 'model' / 'best.pt'),
                         help='模型权重路径')
     parser.add_argument('--format', type=str, default='onnx',
@@ -48,7 +48,7 @@ def main():
         sys.exit(1)
 
     print('=' * 60)
-    print('  YOLOv8 模型导出')
+    print('  YOLOv11 模型导出')
     print('=' * 60)
     print(f'  模型:   {args.model}')
     print(f'  格式:   {args.format}')

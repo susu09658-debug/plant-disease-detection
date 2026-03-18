@@ -2,36 +2,63 @@ import os
 import random
 from django.conf import settings
 
-# 模拟的病害名称列表（用于模型文件不存在时的降级处理）
+# 模拟的病害名称列表（用于模型文件不存在时的降级处理，基于 PlantDoc 数据集）
 MOCK_DISEASES = [
-    {'name': '番茄早疫病', 'plant': '番茄'},
-    {'name': '番茄晚疫病', 'plant': '番茄'},
-    {'name': '苹果黑星病', 'plant': '苹果'},
-    {'name': '苹果黑腐病', 'plant': '苹果'},
-    {'name': '玉米锈病', 'plant': '玉米'},
-    {'name': '葡萄黑腐病', 'plant': '葡萄'},
-    {'name': '马铃薯早疫病', 'plant': '马铃薯'},
-    {'name': '马铃薯晚疫病', 'plant': '马铃薯'},
-    {'name': '草莓叶枯病', 'plant': '草莓'},
+    {'name': '苹果黑星病叶', 'plant': '苹果'},
+    {'name': '苹果锈病叶', 'plant': '苹果'},
+    {'name': '甜椒叶斑病', 'plant': '甜椒'},
+    {'name': '玉米灰斑病', 'plant': '玉米'},
+    {'name': '玉米叶枯病', 'plant': '玉米'},
+    {'name': '玉米锈病叶', 'plant': '玉米'},
+    {'name': '葡萄黑腐病叶', 'plant': '葡萄'},
+    {'name': '葡萄叶枯病', 'plant': '葡萄'},
+    {'name': '马铃薯早疫病叶', 'plant': '马铃薯'},
+    {'name': '马铃薯晚疫病叶', 'plant': '马铃薯'},
+    {'name': '南瓜白粉病叶', 'plant': '南瓜'},
+    {'name': '番茄早疫病叶', 'plant': '番茄'},
+    {'name': '番茄叶斑病', 'plant': '番茄'},
+    {'name': '番茄细菌性斑点病叶', 'plant': '番茄'},
+    {'name': '番茄晚疫病叶', 'plant': '番茄'},
+    {'name': '番茄花叶病毒叶', 'plant': '番茄'},
+    {'name': '番茄黄化曲叶病毒叶', 'plant': '番茄'},
+    {'name': '番茄霉病叶', 'plant': '番茄'},
 ]
 
-# 英文类名到中文的映射（与 data.yaml 保持一致）
+# 英文类名到中文的映射（与 data.yaml PlantDoc 类别保持一致）
 CLASS_NAME_MAP = {
-    'Tomato_Early_Blight': ('番茄早疫病', '番茄'),
-    'Tomato_Late_Blight': ('番茄晚疫病', '番茄'),
-    'Tomato_Healthy': ('番茄健康', '番茄'),
-    'Apple_Scab': ('苹果黑星病', '苹果'),
-    'Apple_Black_Rot': ('苹果黑腐病', '苹果'),
-    'Corn_Common_Rust': ('玉米锈病', '玉米'),
-    'Grape_Black_Rot': ('葡萄黑腐病', '葡萄'),
-    'Potato_Early_Blight': ('马铃薯早疫病', '马铃薯'),
-    'Potato_Late_Blight': ('马铃薯晚疫病', '马铃薯'),
-    'Strawberry_Leaf_Scorch': ('草莓叶枯病', '草莓'),
+    'Apple_Scab_Leaf': ('苹果黑星病叶', '苹果'),
+    'Apple_leaf': ('苹果健康叶', '苹果'),
+    'Apple_rust_leaf': ('苹果锈病叶', '苹果'),
+    'Bell_pepper_leaf_spot': ('甜椒叶斑病', '甜椒'),
+    'Bell_pepper_leaf': ('甜椒健康叶', '甜椒'),
+    'Blueberry_leaf': ('蓝莓健康叶', '蓝莓'),
+    'Cherry_leaf': ('樱桃健康叶', '樱桃'),
+    'Corn_Gray_leaf_spot': ('玉米灰斑病', '玉米'),
+    'Corn_leaf_blight': ('玉米叶枯病', '玉米'),
+    'Corn_rust_leaf': ('玉米锈病叶', '玉米'),
+    'Grape_leaf_black_rot': ('葡萄黑腐病叶', '葡萄'),
+    'Grape_leaf': ('葡萄健康叶', '葡萄'),
+    'Grape_leaf_blight': ('葡萄叶枯病', '葡萄'),
+    'Peach_leaf': ('桃树健康叶', '桃树'),
+    'Potato_leaf_early_blight': ('马铃薯早疫病叶', '马铃薯'),
+    'Potato_leaf_late_blight': ('马铃薯晚疫病叶', '马铃薯'),
+    'Raspberry_leaf': ('覆盆子健康叶', '覆盆子'),
+    'Soybean_leaf': ('大豆健康叶', '大豆'),
+    'Squash_Powdery_mildew_leaf': ('南瓜白粉病叶', '南瓜'),
+    'Strawberry_leaf': ('草莓健康叶', '草莓'),
+    'Tomato_Early_blight_leaf': ('番茄早疫病叶', '番茄'),
+    'Tomato_Septoria_leaf_spot': ('番茄叶斑病', '番茄'),
+    'Tomato_leaf': ('番茄健康叶', '番茄'),
+    'Tomato_leaf_bacterial_spot': ('番茄细菌性斑点病叶', '番茄'),
+    'Tomato_leaf_late_blight': ('番茄晚疫病叶', '番茄'),
+    'Tomato_leaf_mosaic_virus': ('番茄花叶病毒叶', '番茄'),
+    'Tomato_leaf_yellow_virus': ('番茄黄化曲叶病毒叶', '番茄'),
+    'Tomato_mold_leaf': ('番茄霉病叶', '番茄'),
 }
 
 
 class YOLOModel:
-    """YOLOv8 模型推理工具（单例模式）"""
+    """YOLOv11 模型推理工具（单例模式）"""
 
     _instance = None
     _model = None

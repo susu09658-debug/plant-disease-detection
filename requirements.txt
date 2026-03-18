@@ -9,3 +9,6 @@ pillow==12.1.1
 PyJWT==2.12.1
 django-filter==25.2
 PyYAML==6.0.3
+
+# YOLO 模型训练与推理
+ultralytics==8.4.23

@@ -1,6 +1,6 @@
 """
-YOLOv8 植物病害检测 - 模型评估脚本
-Plant Disease Detection - Model Evaluation Script
+YOLOv11 植物病害检测 - 模型评估脚本
+Plant Disease Detection - Model Evaluation Script (YOLOv11 + PlantDoc)
 
 使用说明:
     python yolo/evaluate.py                                    # 评估默认模型
@@ -25,7 +25,7 @@ sys.path.insert(0, str(ROOT))
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='YOLOv8 植物病害检测模型评估')
+    parser = argparse.ArgumentParser(description='YOLOv11 植物病害检测模型评估')
     parser.add_argument('--model', type=str, default=str(ROOT / 'model' / 'best.pt'),
                         help='模型权重路径')
     parser.add_argument('--data', type=str, default=str(ROOT / 'yolo' / 'configs' / 'data.yaml'),
@@ -61,7 +61,7 @@ def main():
         sys.exit(1)
 
     print('=' * 60)
-    print('  YOLOv8 植物病害检测模型评估')
+    print('  YOLOv11 植物病害检测模型评估 (PlantDoc)')
     print('=' * 60)
     print(f'  模型:     {args.model}')
     print(f'  数据集:   {args.data}')
