@@ -1,0 +1,11 @@
+pip==26.0.1
+Django==6.0.3
+djangorestframework==3.16.1
+django-cors-headers==4.9.0
+mysqlclient==2.2.8
+
+pillow==12.1.1
+
+PyJWT==2.12.1
+django-filter==25.2
+PyYAML==6.0.3
