@@ -42,6 +42,12 @@ const router = createRouter({
                     meta: { title: '知识库' },
                 },
                 {
+                    path: 'experiment',
+                    name: 'experiment',
+                    component: () => import('../views/Experiment.vue'),
+                    meta: { title: '实验结果' },
+                },
+                {
                     path: 'profile',
                     name: 'profile',
                     component: () => import('../views/Profile.vue'),

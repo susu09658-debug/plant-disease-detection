@@ -1,0 +1,46 @@
+# ============================================================
+# 植物病害检测数据集配置文件 (YOLOv8 格式)
+# Plant Disease Detection Dataset Configuration
+# ============================================================
+# 使用说明:
+#   1. 将数据集图片放入 datasets/plant_disease/images/{train,val,test}/
+#   2. 将对应标注文件放入 datasets/plant_disease/labels/{train,val,test}/
+#   3. 标注格式: YOLO TXT (class_id cx cy w h)，坐标归一化到 [0, 1]
+# ============================================================
+
+# 数据集根目录 (相对于项目根目录)
+path: ../datasets/plant_disease
+
+# 子目录
+train: images/train
+val: images/val
+test: images/test
+
+# 类别数
+nc: 10
+
+# 类别名称 (按照 PlantVillage 数据集常见类别)
+names:
+  0: Tomato_Early_Blight       # 番茄早疫病
+  1: Tomato_Late_Blight        # 番茄晚疫病
+  2: Tomato_Healthy            # 番茄健康
+  3: Apple_Scab                # 苹果黑星病
+  4: Apple_Black_Rot           # 苹果黑腐病
+  5: Corn_Common_Rust          # 玉米锈病
+  6: Grape_Black_Rot           # 葡萄黑腐病
+  7: Potato_Early_Blight       # 马铃薯早疫病
+  8: Potato_Late_Blight        # 马铃薯晚疫病
+  9: Strawberry_Leaf_Scorch    # 草莓叶枯病
+
+# 中英文类别映射 (供系统展示使用)
+names_cn:
+  0: 番茄早疫病
+  1: 番茄晚疫病
+  2: 番茄健康
+  3: 苹果黑星病
+  4: 苹果黑腐病
+  5: 玉米锈病
+  6: 葡萄黑腐病
+  7: 马铃薯早疫病
+  8: 马铃薯晚疫病
+  9: 草莓叶枯病

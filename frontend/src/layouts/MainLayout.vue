@@ -36,6 +36,11 @@
           <template #title>知识库</template>
         </el-menu-item>
 
+        <el-menu-item index="/app/experiment">
+          <el-icon><DataAnalysis /></el-icon>
+          <template #title>实验结果</template>
+        </el-menu-item>
+
         <el-menu-item index="/app/profile">
           <el-icon><User /></el-icon>
           <template #title>个人中心</template>
