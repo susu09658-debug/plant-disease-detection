@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/detect/', include('apps.detect.urls')),
     path('api/knowledge/', include('apps.knowledge.urls')),
     path('api/experiment/', include('apps.experiment.urls')),
+    path('api/dataset/', include('apps.dataset.urls')),
 ]
 
 # 开发模式下提供 media 文件服务

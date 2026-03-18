@@ -2,9 +2,11 @@
 实验结果 API 视图
 
 提供以下接口:
-  - GET /api/experiment/metrics/   — 获取模型评估指标 (mAP, Precision, Recall 等)
-  - GET /api/experiment/curves/    — 获取训练曲线数据 (loss, mAP 随 epoch 变化)
-  - GET /api/experiment/model-info/ — 获取当前模型基本信息
+  - GET /api/experiment/metrics/       — 获取模型评估指标 (mAP, Precision, Recall 等)
+  - GET /api/experiment/curves/        — 获取训练曲线数据 (loss, mAP 随 epoch 变化)
+  - GET /api/experiment/model-info/    — 获取当前模型基本信息
+  - GET /api/experiment/train-history/ — 获取历史训练记录列表
+  - GET /api/experiment/train-config/  — 获取训练配置参数
 """
 
 import csv
@@ -313,4 +315,103 @@ class ModelInfoView(APIView):
             'code': 200,
             'msg': '查询成功',
             'data': model_info,
+        })
+
+
+class TrainHistoryView(APIView):
+    """获取历史训练记录列表"""
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        if not TRAIN_RUNS_DIR.exists():
+            return Response({
+                'code': 200,
+                'msg': '暂无训练记录',
+                'data': {'runs': []},
+            })
+
+        runs = []
+        for d in sorted(TRAIN_RUNS_DIR.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+            if not d.is_dir():
+                continue
+
+            args = _parse_args_yaml(d)
+            rows = _parse_results_csv(d)
+            best_weight = d / 'weights' / 'best.pt'
+            last_weight = d / 'weights' / 'last.pt'
+
+            # 最终指标
+            final_metrics = {}
+            if rows:
+                last = rows[-1]
+                final_metrics = {
+                    'mAP50': last.get('metrics/mAP50(B)', 0),
+                    'mAP50_95': last.get('metrics/mAP50-95(B)', 0),
+                    'precision': last.get('metrics/precision(B)', 0),
+                    'recall': last.get('metrics/recall(B)', 0),
+                }
+
+            import datetime
+            mtime = d.stat().st_mtime
+            run_info = {
+                'name': d.name,
+                'model': args.get('model', ''),
+                'epochs': args.get('epochs', 0),
+                'epochs_completed': len(rows),
+                'batch': args.get('batch', 0),
+                'imgsz': args.get('imgsz', 640),
+                'optimizer': args.get('optimizer', ''),
+                'lr0': args.get('lr0', 0),
+                'has_best_weight': best_weight.exists(),
+                'has_last_weight': last_weight.exists(),
+                'metrics': final_metrics,
+                'modified_time': datetime.datetime.fromtimestamp(mtime).isoformat(),
+            }
+
+            if best_weight.exists():
+                run_info['best_weight_size_mb'] = round(
+                    best_weight.stat().st_size / (1024 * 1024), 2)
+
+            runs.append(run_info)
+
+        return Response({
+            'code': 200,
+            'msg': '查询成功',
+            'data': {'runs': runs},
+        })
+
+
+class TrainConfigView(APIView):
+    """获取/返回推荐的训练配置参数"""
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        # 读取训练配置文件
+        config_path = YOLO_CONFIG_DIR / 'train_config.yaml'
+        config = {}
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f) or {}
+
+        data_config = _get_data_config()
+
+        # 可选的模型列表
+        model_options = [
+            {'name': 'yolo11n.pt', 'params': '2.6M', 'desc': '超轻量 - 适合快速实验'},
+            {'name': 'yolo11s.pt', 'params': '9.4M', 'desc': '轻量 - 平衡精度与速度'},
+            {'name': 'yolo11m.pt', 'params': '20.1M', 'desc': '中型 - 较高精度'},
+            {'name': 'yolo11l.pt', 'params': '25.3M', 'desc': '大型 - 高精度'},
+            {'name': 'yolo11x.pt', 'params': '56.9M', 'desc': '超大 - 最高精度'},
+        ]
+
+        return Response({
+            'code': 200,
+            'msg': '查询成功',
+            'data': {
+                'config': config,
+                'model_options': model_options,
+                'num_classes': data_config.get('nc', 0),
+                'class_names': data_config.get('names', {}),
+                'optimizer_options': ['SGD', 'Adam', 'AdamW'],
+            }
         })

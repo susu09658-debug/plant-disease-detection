@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'apps.detect',      # 检测模块
     'apps.knowledge',   # 知识库模块
     'apps.experiment',  # 实验结果模块
+    'apps.dataset',     # 数据集管理模块
 ]
 
 MIDDLEWARE = [
