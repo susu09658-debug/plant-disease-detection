@@ -5,27 +5,30 @@
 ### 1.1 总体架构
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    前端 (Vue3 + Vite)                     │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐    │
-│  │ 登录注册  │ │ 系统首页  │ │ 病害检测  │ │ 历史记录  │    │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘    │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐    │
-│  │ 知识库   │ │ 实验结果  │ │ 个人中心  │ │ 管理后台  │    │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘    │
-│         ↕ Axios (JWT Bearer Token)                       │
-├─────────────────────────────────────────────────────────┤
-│                 后端 (Django 6.0.3 + DRF)                 │
-│  ┌───────────────────────────────────────────────┐      │
-│  │ API Gateway (urls.py + JWT 认证中间件)          │      │
-│  ├────────┬────────┬─────────┬──────────┬────────┤      │
-│  │user app│detect  │knowledge│experiment│admin   │      │
-│  └────────┴────────┴─────────┴──────────┴────────┘      │
-│         ↕                    ↕                           │
-│  ┌──────────┐       ┌──────────────┐                    │
-│  │ MySQL 8.0│       │ YOLOv8 Model │                    │
-│  └──────────┘       └──────────────┘                    │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    前端 (Vue3 + Vite)                          │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐         │
+│  │ 登录注册  │ │ 系统首页  │ │ 病害检测  │ │ 历史记录  │         │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘         │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐         │
+│  │ 知识库   │ │ 数据集管理│ │ 模型训练  │ │ 实验结果  │         │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘         │
+│  ┌──────────┐ ┌──────────┐                                    │
+│  │ 个人中心  │ │ 管理后台  │                                    │
+│  └──────────┘ └──────────┘                                    │
+│         ↕ Axios (JWT Bearer Token)                            │
+├──────────────────────────────────────────────────────────────┤
+│                 后端 (Django 6.0.3 + DRF)                      │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │ API Gateway (urls.py + JWT 认证中间件)                │     │
+│  ├────────┬────────┬─────────┬──────────┬───────┬──────┤     │
+│  │user app│detect  │knowledge│experiment│dataset│admin │     │
+│  └────────┴────────┴─────────┴──────────┴───────┴──────┘     │
+│         ↕                    ↕            ↕                   │
+│  ┌──────────┐       ┌──────────────┐ ┌────────────────┐      │
+│  │ MySQL 8.0│       │YOLOv11 Model │ │PlantDoc Dataset│      │
+│  └──────────┘       └──────────────┘ └────────────────┘      │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ### 1.2 技术栈
@@ -36,10 +39,11 @@
 | 前端状态  | Pinia                                       |
 | 前端路由  | Vue Router 4（Hash/History 模式）           |
 | HTTP 客户端| Axios（统一封装，JWT 拦截器）              |
-| 后端框架  | Django 6.0.3 + Django REST Framework 3.15.2 |
-| 认证方式  | JWT（PyJWT 2.10.1）                          |
+| 后端框架  | Django 6.0.3 + Django REST Framework 3.16.1 |
+| 认证方式  | JWT（PyJWT 2.12.1）                          |
 | 密码加密  | Django PBKDF2（make_password/check_password）|
-| AI 模型   | YOLOv8（ultralytics）                        |
+| AI 模型   | YOLOv11（ultralytics）                       |
+| 训练数据集| PlantDoc（Kaggle, 28 类植物病害）            |
 | 数据库    | MySQL 8.0                                   |
 | 缓存      | Django LocMemCache（验证码存储）             |
 | 跨域      | django-cors-headers                         |
@@ -54,7 +58,8 @@
 | 用户模块    | /api/user/         | 注册、登录、个人信息、密码管理  |
 | 检测模块    | /api/detect/       | 图片上传、YOLO推理、历史记录    |
 | 知识库模块  | /api/knowledge/    | 病害知识浏览与管理              |
-| 实验结果模块| /api/experiment/   | 模型指标、训练曲线、模型信息    |
+| 实验结果模块| /api/experiment/   | 模型指标、训练曲线、训练历史、训练配置 |
+| 数据集模块  | /api/dataset/      | 数据集概览、类别分布、划分统计、验证 |
 | 管理员模块  | /api/user/admin/   | 用户列表、用户状态管理          |
 
 ### 2.2 前端模块
@@ -66,6 +71,8 @@
 | /app/detect       | Detect.vue              | 病害检测页     |
 | /app/history      | History.vue             | 历史记录页     |
 | /app/knowledge    | Knowledge.vue           | 知识库浏览页   |
+| /app/dataset      | DatasetManage.vue       | 数据集管理页（新增）|
+| /app/training     | TrainingManage.vue      | 模型训练管理页（新增）|
 | /app/experiment   | Experiment.vue          | 实验结果页     |
 | /app/profile      | Profile.vue             | 个人中心页     |
 | /app/admin/users  | admin/UserManage.vue    | 用户管理（管理员）|
@@ -104,10 +111,10 @@
 
 ## 五、YOLO 推理降级策略
 
-- 正常情况：加载 `model/best.pt`，调用 YOLOv8 推理
+- 正常情况：加载 `model/best.pt`，调用 YOLOv11 推理
 - 模型文件不存在时：返回随机模拟数据（便于开发调试，不影响系统其他功能运行）
 - 推理出错时：捕获异常并降级返回模拟数据
-- 类名映射：英文类名自动映射为中文名称（与 `yolo/configs/data.yaml` 一致）
+- 类名映射：英文类名自动映射为中文名称（与 `yolo/configs/data.yaml` PlantDoc 28 类一致）
 
 ## 六、YOLO 模型训练与评估
 
@@ -115,13 +122,14 @@
 
 ```
 yolo/                           # 训练与评估脚本
-├── train.py                    # 模型训练入口
+├── train.py                    # YOLOv11 模型训练入口
 ├── evaluate.py                 # 模型评估（生成论文指标）
 ├── predict.py                  # 单张/批量推理
 ├── export_model.py             # 模型格式导出
+├── prepare_plantdoc.py         # PlantDoc 数据集准备脚本
 └── configs/
-    ├── data.yaml               # 数据集配置（类别定义）
-    └── train_config.yaml       # 训练超参数参考
+    ├── data.yaml               # PlantDoc 数据集配置（28 类）
+    └── train_config.yaml       # YOLOv11 训练超参数参考
 
 datasets/                       # 数据集存放
 └── plant_disease/
@@ -140,7 +148,7 @@ model/                          # 系统部署使用的模型权重
 
 ### 6.2 训练流程
 
-1. 准备数据集（参考 `datasets/README.md`）
+1. 准备 PlantDoc 数据集: `python yolo/prepare_plantdoc.py --download` 或 `--source /path/to/raw`
 2. 执行训练: `python yolo/train.py`
 3. 评估模型: `python yolo/evaluate.py --split test --save-json`
 4. 部署模型: `cp runs/train/plant_disease/weights/best.pt model/best.pt`

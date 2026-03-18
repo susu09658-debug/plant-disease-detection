@@ -18,7 +18,13 @@ runs/   # 训练产生的日志和中间权重
 *.pt    # 除非是最终模型，否则不建议全部提交
 datasets/plant_disease/images/  # 图片文件不进仓库
 datasets/plant_disease/labels/  # 标注文件不进仓库
+datasets/plantdoc_raw/          # 原始下载数据不进仓库
 
 # IDE
 .vscode/
 .idea/
+
+# OS
+Thumbs.db
+*.swp
+*.swo
