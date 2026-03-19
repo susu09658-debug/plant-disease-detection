@@ -43,7 +43,7 @@
 | 认证方式  | JWT（PyJWT 2.12.1）                          |
 | 密码加密  | Django PBKDF2（make_password/check_password）|
 | AI 模型   | YOLOv11（ultralytics）                       |
-| 训练数据集| PlantDoc（Kaggle, 28 类植物病害）            |
+| 训练数据集| PlantDoc（DatasetNinja, 30 类植物病害）            |
 | 数据库    | MySQL 8.0                                   |
 | 缓存      | Django LocMemCache（验证码存储）             |
 | 跨域      | django-cors-headers                         |
@@ -55,7 +55,7 @@
 
 | 模块        | 路由前缀           | 说明                           |
 |-------------|--------------------|---------------------------------|
-| 用户模块    | /api/user/         | 注册、登录、个人信息、密码管理  |
+| 用户模块    | /api/user/         | 注册、登录、忘记密码、个人信息、密码管理 |
 | 检测模块    | /api/detect/       | 图片上传、YOLO推理、历史记录    |
 | 知识库模块  | /api/knowledge/    | 病害知识浏览与管理              |
 | 实验结果模块| /api/experiment/   | 模型指标、训练曲线、训练历史、训练配置 |
@@ -71,8 +71,8 @@
 | /app/detect       | Detect.vue              | 病害检测页     |
 | /app/history      | History.vue             | 历史记录页     |
 | /app/knowledge    | Knowledge.vue           | 知识库浏览页   |
-| /app/dataset      | DatasetManage.vue       | 数据集管理页（新增）|
-| /app/training     | TrainingManage.vue      | 模型训练管理页（新增）|
+| /app/dataset      | DatasetManage.vue       | 数据集管理页（管理员专属）|
+| /app/training     | TrainingManage.vue      | 模型训练管理页（管理员专属）|
 | /app/experiment   | Experiment.vue          | 实验结果页     |
 | /app/profile      | Profile.vue             | 个人中心页     |
 | /app/admin/users  | admin/UserManage.vue    | 用户管理（管理员）|
@@ -108,13 +108,15 @@
 3. **路由守卫**：前端 `router.beforeEach` 拦截未认证访问，401 响应自动清除 token 并跳转登录页
 4. **CORS**：通过 `django-cors-headers` 统一控制跨域
 5. **验证码**：登录需输入图形验证码，5分钟有效期，验证后立即删除
+6. **忘记密码**：通过用户名+手机号+验证码三重验证，防止枚举攻击（统一返回「用户信息验证失败」）
+7. **权限控制**：使用 DRF permission_classes 实现基于角色的访问控制，管理员功能（用户管理、知识库管理、数据集管理、模型训练管理）均需 IsAdminUser 权限
 
 ## 五、YOLO 推理降级策略
 
 - 正常情况：加载 `model/best.pt`，调用 YOLOv11 推理
 - 模型文件不存在时：返回随机模拟数据（便于开发调试，不影响系统其他功能运行）
 - 推理出错时：捕获异常并降级返回模拟数据
-- 类名映射：英文类名自动映射为中文名称（与 `yolo/configs/data.yaml` PlantDoc 28 类一致）
+- 类名映射：英文类名自动映射为中文名称（与 `yolo/configs/data.yaml` PlantDoc 30 类一致）
 
 ## 六、YOLO 模型训练与评估
 
@@ -128,7 +130,7 @@ yolo/                           # 训练与评估脚本
 ├── export_model.py             # 模型格式导出
 ├── prepare_plantdoc.py         # PlantDoc 数据集准备脚本
 └── configs/
-    ├── data.yaml               # PlantDoc 数据集配置（28 类）
+    ├── data.yaml               # PlantDoc 数据集配置（30 类）
     └── train_config.yaml       # YOLOv11 训练超参数参考
 
 datasets/                       # 数据集存放

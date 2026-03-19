@@ -1,6 +1,7 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from utils.authentication import JWTAuthentication
+from utils.permissions import IsAdminUser
 from .models import KnowledgeInfo
 from .serializers import KnowledgeInfoSerializer
 
@@ -56,13 +57,9 @@ class KnowledgeDetailView(APIView):
 class KnowledgeManageView(APIView):
     """管理员：增删改病害知识库"""
     authentication_classes = [JWTAuthentication]
-
-    def _check_admin(self, request):
-        return request.user and hasattr(request.user, 'is_admin') and request.user.is_admin == 1
+    permission_classes = [IsAdminUser]
 
     def post(self, request):
-        if not self._check_admin(request):
-            return Response({'code': 403, 'msg': '无权限，需要管理员身份'})
         serializer = KnowledgeInfoSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -70,8 +67,6 @@ class KnowledgeManageView(APIView):
         return Response({'code': 400, 'msg': '参数错误', 'data': serializer.errors})
 
     def put(self, request, pk):
-        if not self._check_admin(request):
-            return Response({'code': 403, 'msg': '无权限，需要管理员身份'})
         obj = KnowledgeInfo.objects.filter(id=pk).first()
         if not obj:
             return Response({'code': 404, 'msg': '未找到该病害信息'})
@@ -82,7 +77,5 @@ class KnowledgeManageView(APIView):
         return Response({'code': 400, 'msg': '参数错误', 'data': serializer.errors})
 
     def delete(self, request, pk):
-        if not self._check_admin(request):
-            return Response({'code': 403, 'msg': '无权限，需要管理员身份'})
         KnowledgeInfo.objects.filter(id=pk).delete()
         return Response({'code': 200, 'msg': '删除成功'})

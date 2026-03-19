@@ -41,11 +41,11 @@
             <el-icon><Cpu /></el-icon>
             <span>模型与数据</span>
           </template>
-          <el-menu-item index="/app/dataset">
+          <el-menu-item v-if="userStore.isAdmin" index="/app/dataset">
             <el-icon><FolderOpened /></el-icon>
             数据集管理
           </el-menu-item>
-          <el-menu-item index="/app/training">
+          <el-menu-item v-if="userStore.isAdmin" index="/app/training">
             <el-icon><Aim /></el-icon>
             模型训练
           </el-menu-item>

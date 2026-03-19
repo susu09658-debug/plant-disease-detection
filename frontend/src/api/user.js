@@ -13,3 +13,5 @@ export const getProfile = () => request.get('/user/profile/');
 export const updateProfile = (data) => request.put('/user/profile/', data);
 
 export const updatePassword = (data) => request.put('/user/password/', data);
+
+export const resetPassword = (data) => request.post('/user/reset-password/', data);

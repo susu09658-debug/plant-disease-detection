@@ -2,7 +2,7 @@
 
 ## 一、项目简介
 
-本项目为本科毕业设计，采用前后端分离架构，集成 YOLOv11 目标检测模型，实现植物叶片病害的智能识别与管理。系统使用 Kaggle 上的 PlantDoc 数据集进行模型训练，包含完整的数据集管理、模型训练、评估、部署和可视化流程，可作为毕业论文的实验验证平台。
+本项目为本科毕业设计，采用前后端分离架构，集成 YOLOv11 目标检测模型，实现植物叶片病害的智能识别与管理。系统使用 DatasetNinja 上的 PlantDoc 数据集进行模型训练，包含完整的数据集管理、模型训练、评估、部署和可视化流程，可作为毕业论文的实验验证平台。
 
 ## 二、技术栈
 
@@ -12,13 +12,14 @@
 | 后端      | Django 6.0.3 + Django REST Framework 3.16.1      |
 | 认证      | JWT（PyJWT 2.12.1）                               |
 | AI 模型   | YOLOv11（ultralytics）                            |
-| 数据集    | PlantDoc（Kaggle, 28 类植物病害）                  |
+| 数据集    | PlantDoc（DatasetNinja, 30 类植物病害）             |
 | 数据库    | MySQL 8.0                                       |
 | 跨域      | django-cors-headers 4.9.0                        |
 
 ## 三、功能模块
 
 - **登录注册**：用户名+密码+图形验证码登录，PBKDF2 加密存储密码
+- **忘记密码**：通过用户名+手机号+验证码重置密码
 - **JWT 认证**：安全的 Token 认证，7天有效期，自动续期
 - **系统首页**：检测统计卡片 + 近7天趋势图 + 病害分布图 + 模型状态
 - **病害检测**：拖拽上传图片，调用 YOLOv11 推理，展示标注结果及检测框详情
@@ -28,7 +29,7 @@
 - **模型训练管理**（新增）：训练配置参考、YOLOv11 模型选项、历史训练记录、论文实验设计建议
 - **实验结果**：展示模型训练曲线（损失/mAP/Precision/Recall）、评估指标、各类别 AP、实验设计说明
 - **个人中心**：查看/修改个人信息、修改密码
-- **管理后台**（管理员专属）：用户管理（启用/禁用/设管理员/删除）、知识库管理（增删改查）
+- **管理后台**（管理员专属）：用户管理、知识库管理、数据集管理、模型训练管理（基于权限类控制）
 
 ## 四、项目结构
 
@@ -70,7 +71,7 @@ plant-disease-detection/
 │   ├── export_model.py      # 模型导出
 │   ├── prepare_plantdoc.py  # PlantDoc 数据集准备脚本（新增）
 │   └── configs/             # 数据集与训练配置
-│       ├── data.yaml        # PlantDoc 28 类数据集配置
+│       ├── data.yaml        # PlantDoc 30 类数据集配置
 │       └── train_config.yaml # YOLOv11 训练超参数
 ├── datasets/                # 数据集存放目录
 │   └── plant_disease/       # YOLO 格式数据集
@@ -78,7 +79,8 @@ plant-disease-detection/
 ├── docs/                    # 设计文档
 │   ├── system-design.md
 │   ├── api-docs.md
-│   └── database-design.md
+│   ├── database-design.md
+│   └── user-guide.md
 └── requirements.txt         # Python 依赖
 ```
 
@@ -121,11 +123,11 @@ npm run dev
 
 ```bash
 # 方式一：手动下载后转换
-# 从 Kaggle 下载 PlantDoc 数据集，解压后运行：
+# 从 DatasetNinja 下载 PlantDoc 数据集，解压后运行：
 python yolo/prepare_plantdoc.py --source /path/to/plantdoc_raw
 
-# 方式二：使用 Kaggle CLI 自动下载
-pip install kaggle
+# 方式二：使用 DatasetNinja CLI 自动下载
+pip install dataset-ninja
 python yolo/prepare_plantdoc.py --download
 
 # 验证数据集
@@ -152,7 +154,7 @@ cp runs/train/plant_disease/weights/best.pt model/best.pt
 
 ## 六、PlantDoc 数据集
 
-本项目使用 Kaggle 上的 **PlantDoc** 数据集，包含 28 个类别：
+本项目使用 DatasetNinja 上的 **PlantDoc** 数据集，包含 30 个类别：
 
 | 植物 | 病害类别 |
 |------|---------|
@@ -163,14 +165,14 @@ cp runs/train/plant_disease/weights/best.pt model/best.pt
 | 玉米 | 灰斑病、叶枯病、锈病叶 |
 | 葡萄 | 黑腐病叶、健康叶、叶枯病 |
 | 桃树 | 健康叶 |
-| 马铃薯 | 早疫病叶、晚疫病叶 |
+| 马铃薯 | 健康叶、早疫病叶、晚疫病叶 |
 | 覆盆子 | 健康叶 |
 | 大豆 | 健康叶 |
 | 南瓜 | 白粉病叶 |
 | 草莓 | 健康叶 |
-| 番茄 | 早疫病叶、叶斑病、健康叶、细菌性斑点病叶、晚疫病叶、花叶病毒叶、黄化曲叶病毒叶、霉病叶 |
+| 番茄 | 早疫病叶、叶斑病、健康叶、细菌性斑点病叶、晚疫病叶、花叶病毒叶、黄化曲叶病毒叶、霉病叶、二斑叶螨叶 |
 
-数据集来源：https://www.kaggle.com/datasets/mrigaankbhatt/plantdoc-dataset
+数据集来源：https://datasetninja.com/plantdoc
 
 ## 七、API 接口
 
@@ -183,3 +185,7 @@ cp runs/train/plant_disease/weights/best.pt model/best.pt
 ## 九、系统架构
 
 详见 [docs/system-design.md](docs/system-design.md)
+
+## 十、系统使用指南
+
+详见 [docs/user-guide.md](docs/user-guide.md)

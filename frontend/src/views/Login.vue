@@ -48,6 +48,7 @@
 
               <div class="quick-row">
                 <el-checkbox v-model="loginForm.remember">7天内自动登录</el-checkbox>
+                <el-button type="text" class="forgot-link" @click="showForgotDialog = true">忘记密码？</el-button>
               </div>
 
               <el-button :loading="loadingLogin" type="primary" class="submit-btn" @click="handleLogin">
@@ -110,15 +111,41 @@
         </el-tabs>
       </el-card>
     </div>
+
+    <!-- 忘记密码弹窗 -->
+    <el-dialog v-model="showForgotDialog" title="忘记密码" width="420px" :close-on-click-modal="false">
+      <el-form ref="forgotFormRef" :model="forgotForm" :rules="forgotRules" label-width="0" size="large">
+        <el-form-item prop="username">
+          <el-input v-model="forgotForm.username" placeholder="请输入用户名" prefix-icon="User" />
+        </el-form-item>
+        <el-form-item prop="phone">
+          <el-input v-model="forgotForm.phone" placeholder="请输入注册时的手机号" prefix-icon="Iphone" />
+        </el-form-item>
+        <el-form-item prop="newPassword">
+          <el-input v-model="forgotForm.newPassword" type="password" placeholder="请设置新密码（至少8位）" show-password prefix-icon="Lock" />
+        </el-form-item>
+        <el-form-item prop="confirmNewPassword">
+          <el-input v-model="forgotForm.confirmNewPassword" type="password" placeholder="确认新密码" show-password prefix-icon="Lock" />
+        </el-form-item>
+        <el-form-item prop="captcha" class="captcha-item">
+          <el-input v-model="forgotForm.captcha" placeholder="请输入图形验证码" prefix-icon="Picture" />
+          <img class="captcha-img" :src="forgotCaptchaImage" @click="refreshForgotCaptcha" alt="验证码" title="点击刷新" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showForgotDialog = false">取消</el-button>
+        <el-button type="primary" :loading="loadingReset" @click="handleResetPassword">重置密码</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '../store/user';
-import { getCaptcha, register as apiRegister } from '../api/user';
+import { getCaptcha, register as apiRegister, resetPassword } from '../api/user';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -138,6 +165,13 @@ const captchaToken = ref('');
 const loginFailCount = ref(0);
 const isLocked = ref(false);
 const lockEndTime = ref(0);
+
+const showForgotDialog = ref(false);
+const loadingReset = ref(false);
+const forgotFormRef = ref(null);
+const forgotForm = reactive({ username: '', phone: '', newPassword: '', confirmNewPassword: '', captcha: '' });
+const forgotCaptchaImage = ref('');
+const forgotCaptchaToken = ref('');
 
 const encrypt = (text) => {
     try { return btoa(unescape(encodeURIComponent(text))); } catch { return text; }
@@ -183,6 +217,10 @@ const validateConfirmPassword = (rule, value, callback) => {
     if (value !== registerForm.password) return callback(new Error('两次输入密码不一致'));
     callback();
 };
+const validateForgotConfirmPassword = (rule, value, callback) => {
+    if (value !== forgotForm.newPassword) return callback(new Error('两次输入密码不一致'));
+    callback();
+};
 const validateAgreement = (rule, value, callback) => {
     if (!value) return callback(new Error('请同意服务条款与隐私政策'));
     callback();
@@ -203,6 +241,54 @@ const registerRules = reactive({
     password: [{ required: true, validator: validatePassword, trigger: 'blur' }],
     confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'blur' }],
     agreed: [{ required: true, validator: validateAgreement, trigger: 'change' }],
+});
+
+const forgotRules = reactive({
+    username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+    phone: [{ required: true, validator: validatePhone, trigger: 'blur' }],
+    newPassword: [{ required: true, validator: validatePassword, trigger: 'blur' }],
+    confirmNewPassword: [{ required: true, validator: validateForgotConfirmPassword, trigger: 'blur' }],
+    captcha: [{ required: true, message: '请输入图形验证码', trigger: 'blur' }],
+});
+
+const refreshForgotCaptcha = async () => {
+    try {
+        const res = await getCaptcha();
+        forgotCaptchaImage.value = res?.data?.image || '';
+        forgotCaptchaToken.value = res?.data?.token || '';
+        forgotForm.captcha = '';
+    } catch {
+        ElMessage.error('验证码加载失败');
+    }
+};
+
+const handleResetPassword = async () => {
+    const valid = await forgotFormRef.value?.validate().catch(() => false);
+    if (!valid) return;
+
+    loadingReset.value = true;
+    try {
+        await resetPassword({
+            username: forgotForm.username,
+            phone: forgotForm.phone,
+            new_password: forgotForm.newPassword,
+            captcha: forgotForm.captcha,
+            captcha_token: forgotCaptchaToken.value,
+        });
+        ElMessage.success('密码重置成功，请使用新密码登录');
+        showForgotDialog.value = false;
+        forgotFormRef.value?.resetFields();
+    } catch (error) {
+        const msg = error?.response?.data?.msg || error.message || '密码重置失败，请检查输入信息或稍后重试';
+        ElMessage.error(msg);
+        refreshForgotCaptcha();
+    } finally {
+        loadingReset.value = false;
+    }
+};
+
+watch(showForgotDialog, (val) => {
+    if (val) refreshForgotCaptcha();
 });
 
 const startLock = () => {
@@ -355,6 +441,12 @@ onMounted(() => {
     display: flex;
     align-items: center;
     margin: 4px 0 12px;
+}
+
+.forgot-link {
+    margin-left: auto;
+    font-size: 13px;
+    padding: 0;
 }
 
 .captcha-item {
