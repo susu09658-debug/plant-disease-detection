@@ -283,6 +283,33 @@ def setup_directories():
     print('  数据集目录结构已创建')
 
 
+def _collect_supervisely_pairs_from_dir(directory):
+    """
+    从单个 Supervisely 子目录收集图片-标注对。
+
+    Args:
+        directory: 包含 img/ 和 ann/ 子目录的目录路径
+
+    Returns:
+        list: [(img_path, ann_path), ...] 图片-标注对列表
+    """
+    pairs = []
+    img_dir = directory / 'img'
+    ann_dir = directory / 'ann'
+    if not img_dir.is_dir() or not ann_dir.is_dir():
+        return pairs
+    for ext in ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.JPG', '*.JPEG', '*.PNG']:
+        for img_path in img_dir.glob(ext):
+            # Supervisely JSON: 原图文件名.json (e.g. img.jpg -> img.jpg.json)
+            # 也兼容 stem.json 格式 (e.g. img.jpg -> img.json)
+            ann_path = ann_dir / (img_path.name + '.json')
+            if not ann_path.exists():
+                ann_path = ann_dir / (img_path.stem + '.json')
+            if ann_path.exists():
+                pairs.append((img_path, ann_path))
+    return pairs
+
+
 def _collect_supervisely_pairs(source):
     """
     收集 Supervisely 格式数据集中的图片-标注对。
@@ -304,20 +331,32 @@ def _collect_supervisely_pairs(source):
     for subdir in sorted(source.iterdir()):
         if not subdir.is_dir():
             continue
-        img_dir = subdir / 'img'
-        ann_dir = subdir / 'ann'
-        if not img_dir.is_dir() or not ann_dir.is_dir():
-            continue
-        for ext in ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.JPG', '*.JPEG', '*.PNG']:
-            for img_path in img_dir.glob(ext):
-                # Supervisely JSON: 原图文件名.json (e.g. img.jpg -> img.jpg.json)
-                # 也兼容 stem.json 格式 (e.g. img.jpg -> img.json)
-                ann_path = ann_dir / (img_path.name + '.json')
-                if not ann_path.exists():
-                    ann_path = ann_dir / (img_path.stem + '.json')
-                if ann_path.exists():
-                    pairs.append((img_path, ann_path))
+        pairs.extend(_collect_supervisely_pairs_from_dir(subdir))
     return pairs
+
+
+def _has_presplit_dirs(source):
+    """
+    检查数据集是否已预划分为 train/test 子目录（DatasetNinja 下载格式）。
+
+    DatasetNinja 下载解压后的目录结构:
+        plantdoc/
+        ├── train/
+        │   ├── ann/
+        │   └── img/
+        └── test/
+            ├── ann/
+            └── img/
+
+    Returns:
+        bool: 如果存在 train/ 子目录且包含 img/ 和 ann/ 则返回 True
+    """
+    train_dir = source / 'train'
+    return (
+        train_dir.is_dir()
+        and (train_dir / 'img').is_dir()
+        and (train_dir / 'ann').is_dir()
+    )
 
 
 def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
@@ -325,10 +364,13 @@ def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
     将 PlantDoc 原始数据集转换为 YOLO 格式。
 
     自动检测标注格式（Supervisely JSON 或 VOC XML）并调用对应转换器。
+    如果数据集已预划分 train/test（如 DatasetNinja 格式），将保留 test 集不变，
+    仅从 train 集中按比例拆分出验证集。
 
     Args:
         source_dir: 原始数据集目录
-        train_ratio: 训练集比例
+        train_ratio: 训练集比例（仅在未预划分时使用全量划分；
+                     预划分时 val_ratio 用于从 train 中拆分验证集）
         val_ratio: 验证集比例
     """
     source = Path(source_dir)
@@ -353,7 +395,95 @@ def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
 
 
 def _convert_supervisely(source, train_ratio, val_ratio):
-    """转换 Supervisely JSON 格式数据集"""
+    """
+    转换 Supervisely JSON 格式数据集。
+
+    智能处理两种场景：
+    1. 预划分目录（如 DatasetNinja 下载格式 train/test）：
+       保留 test 集，从 train 中拆分出验证集
+    2. 未预划分：将所有数据按比例随机划分为 train/val/test
+    """
+    presplit = _has_presplit_dirs(source)
+
+    if presplit:
+        print('  检测到预划分目录结构 (DatasetNinja 格式)，将保留现有 test 集')
+        _convert_supervisely_presplit(source, val_ratio)
+    else:
+        _convert_supervisely_unified(source, train_ratio, val_ratio)
+
+
+def _convert_supervisely_presplit(source, val_ratio):
+    """
+    转换已预划分为 train/test 的 Supervisely 数据集。
+    从 train 集中按 val_ratio 拆分出验证集，test 集保持不变。
+
+    Args:
+        source: 数据集根目录（包含 train/, test/ 子目录）
+        val_ratio: 从 train 中拆分出验证集的比例（默认 0.1 即 10%）
+    """
+    train_pairs = _collect_supervisely_pairs_from_dir(source / 'train')
+    test_pairs = _collect_supervisely_pairs_from_dir(source / 'test')
+
+    print(f'  原始 train 集: {len(train_pairs)} 对图片-标注')
+    print(f'  原始 test 集:  {len(test_pairs)} 对图片-标注')
+
+    if not train_pairs:
+        print('  警告: train 目录中没有找到 Supervisely 格式的图片-标注对')
+        print('  请确保目录结构为: train/img/ 和 train/ann/')
+        return
+
+    # 从 train 集中拆分出验证集
+    random.seed(42)
+    random.shuffle(train_pairs)
+
+    n_val = max(1, int(len(train_pairs) * val_ratio))
+    val_pairs = train_pairs[:n_val]
+    final_train_pairs = train_pairs[n_val:]
+
+    print(f'  拆分后 train: {len(final_train_pairs)} 张')
+    print(f'  拆分后 val:   {len(val_pairs)} 张')
+    print(f'  保留 test:    {len(test_pairs)} 张')
+
+    splits = {
+        'train': final_train_pairs,
+        'val': val_pairs,
+        'test': test_pairs,
+    }
+
+    stats = Counter()
+
+    for split_name, split_pairs in splits.items():
+        print(f'\n  处理 {split_name} 集 ({len(split_pairs)} 张) ...')
+        for img_path, ann_path in split_pairs:
+            yolo_lines = convert_supervisely_to_yolo(ann_path)
+            if not yolo_lines:
+                continue
+
+            # 复制图片
+            dst_img = DATASET_DIR / 'images' / split_name / img_path.name
+            shutil.copy2(img_path, dst_img)
+
+            # 写入标注
+            dst_label = DATASET_DIR / 'labels' / split_name / (img_path.stem + '.txt')
+            with open(dst_label, 'w') as f:
+                f.write('\n'.join(yolo_lines) + '\n')
+
+            for line in yolo_lines:
+                class_id = int(line.split()[0])
+                stats[PLANTDOC_CLASSES[class_id]] += 1
+
+    _print_conversion_stats(splits, stats)
+
+
+def _convert_supervisely_unified(source, train_ratio, val_ratio):
+    """
+    转换未预划分的 Supervisely 数据集（全量随机划分）。
+
+    Args:
+        source: 数据集根目录
+        train_ratio: 训练集比例
+        val_ratio: 验证集比例
+    """
     pairs = _collect_supervisely_pairs(source)
     print(f'  找到 {len(pairs)} 对图片-标注 (Supervisely JSON)')
 

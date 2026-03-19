@@ -5,6 +5,27 @@
     <el-card shadow="never" class="upload-card">
       <template #header><span class="card-title">上传植物图片</span></template>
 
+      <!-- 模型选择 -->
+      <div class="model-select-row">
+        <span class="model-label">检测模型：</span>
+        <el-select
+          v-model="selectedModel"
+          placeholder="默认模型"
+          clearable
+          size="default"
+          style="width: 260px;"
+          :loading="modelLoading"
+        >
+          <el-option
+            v-for="m in modelList"
+            :key="m.key"
+            :label="m.name + (m.is_default ? ' (默认)' : '') + ' - ' + m.size_mb + 'MB'"
+            :value="m.key"
+          />
+        </el-select>
+        <el-button :icon="Refresh" circle size="small" @click="loadModels" title="刷新模型列表" style="margin-left: 8px;" />
+      </div>
+
       <el-upload
         ref="uploadRef"
         class="upload-area"
@@ -107,13 +128,38 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { uploadDetect } from '../api/detect';
+import { Refresh } from '@element-plus/icons-vue';
+import { uploadDetect, getModelList } from '../api/detect';
 
 const detecting = ref(false);
 const result = ref(null);
 const uploadRef = ref(null);
+const selectedModel = ref('');
+const modelList = ref([]);
+const modelLoading = ref(false);
+
+const loadModels = async () => {
+    modelLoading.value = true;
+    try {
+        const res = await getModelList();
+        modelList.value = res.data || [];
+        // 如果有默认模型且当前未选择，自动选中
+        if (!selectedModel.value) {
+            const def = modelList.value.find(m => m.is_default);
+            if (def) selectedModel.value = def.key;
+        }
+    } catch {
+        // 模型列表加载失败不阻塞使用
+    } finally {
+        modelLoading.value = false;
+    }
+};
+
+onMounted(() => {
+    loadModels();
+});
 
 const beforeUpload = (file) => {
     const isImage = ['image/jpeg', 'image/png', 'image/jpg'].includes(file.type);
@@ -135,6 +181,9 @@ const handleUpload = async ({ file }) => {
     try {
         const formData = new FormData();
         formData.append('image', file);
+        if (selectedModel.value) {
+            formData.append('model_key', selectedModel.value);
+        }
         const res = await uploadDetect(formData);
         result.value = res.data;
         ElMessage.success('检测完成！');
@@ -170,6 +219,18 @@ const getConfColor = (conf) => {
 
 .card-title {
     font-weight: 600;
+}
+
+.model-select-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.model-label {
+    font-size: 14px;
+    color: #606266;
+    white-space: nowrap;
 }
 
 .upload-area {

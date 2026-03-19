@@ -4,6 +4,8 @@ export const uploadDetect = (formData) => request.post('/detect/upload/', formDa
     headers: { 'Content-Type': 'multipart/form-data' },
 });
 
+export const getModelList = () => request.get('/detect/models/');
+
 export const getHistory = (params) => request.get('/detect/history/', { params });
 
 export const getDetail = (id) => request.get(`/detect/history/${id}/`);

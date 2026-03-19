@@ -1,5 +1,7 @@
 import os
 import random
+from pathlib import Path
+
 from django.conf import settings
 
 # 模拟的病害名称列表（用于模型文件不存在时的降级处理，基于 DatasetNinja PlantDoc 数据集）
@@ -60,36 +62,108 @@ CLASS_NAME_MAP = {
 }
 
 
+def _get_model_dir():
+    """获取模型目录路径"""
+    return Path(settings.YOLO_MODEL_PATH).parent
+
+
 class YOLOModel:
-    """YOLOv11 模型推理工具（单例模式）"""
+    """YOLOv11 模型推理工具（支持多模型管理）"""
 
     _instance = None
-    _model = None
+    _models = {}  # 缓存已加载的模型 {model_key: YOLO_model}
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def _load_model(self):
-        """懒加载模型"""
-        if self._model is not None:
-            return True
-        model_path = str(settings.YOLO_MODEL_PATH)
-        if not os.path.exists(model_path):
-            return False
+    def _resolve_model_path(self, model_key=None):
+        """
+        根据 model_key 解析模型文件路径。
+
+        Args:
+            model_key: 模型标识（如 'best', 'yolo11n' 或完整文件名）。
+                       为 None 时使用默认模型（best.pt）。
+
+        Returns:
+            str: 模型文件完整路径，或 None（不存在）
+        """
+        model_dir = _get_model_dir()
+        if not model_key:
+            path = str(settings.YOLO_MODEL_PATH)
+            return path if os.path.exists(path) else None
+
+        # 优先在模型目录中查找 model_key.pt
+        candidate = model_dir / f'{model_key}.pt'
+        if candidate.exists():
+            return str(candidate)
+
+        # 已包含 .pt 后缀
+        if model_key.endswith('.pt'):
+            candidate = model_dir / model_key
+            if candidate.exists():
+                return str(candidate)
+
+        return None
+
+    def _load_model(self, model_key=None):
+        """
+        懒加载模型并缓存。
+
+        Args:
+            model_key: 模型标识
+
+        Returns:
+            已加载的 YOLO 模型对象，或 None
+        """
+        cache_key = model_key or 'default'
+        if cache_key in self._models:
+            return self._models[cache_key]
+
+        model_path = self._resolve_model_path(model_key)
+        if not model_path:
+            return None
+
         try:
             from ultralytics import YOLO
-            self._model = YOLO(model_path)
-            return True
+            model = YOLO(model_path)
+            self._models[cache_key] = model
+            return model
         except Exception:
-            return False
+            return None
 
-    def detect(self, image_path):
+    def list_models(self):
+        """
+        列出模型目录中所有可用的 .pt 模型文件。
+
+        Returns:
+            list[dict]: [{'key': 'best', 'name': 'best.pt', 'size_mb': 12.3}, ...]
+        """
+        model_dir = _get_model_dir()
+        models = []
+        if not model_dir.exists():
+            return models
+
+        for pt_file in sorted(model_dir.glob('*.pt')):
+            size_mb = round(pt_file.stat().st_size / (1024 * 1024), 1)
+            key = pt_file.stem
+            models.append({
+                'key': key,
+                'name': pt_file.name,
+                'size_mb': size_mb,
+            })
+        return models
+
+    def detect(self, image_path, model_key=None):
         """
         对输入图片执行病害检测。
 
         如果模型文件不存在，返回模拟数据（便于开发调试）。
+
+        Args:
+            image_path: 输入图片路径
+            model_key: 模型标识（如 'best', 'yolo11n'），None 使用默认模型
 
         Returns:
             dict: {
@@ -100,9 +174,9 @@ class YOLOModel:
                 'result_image_path': str,
             }
         """
-        model_loaded = self._load_model()
+        model = self._load_model(model_key)
 
-        if not model_loaded:
+        if model is None:
             # 降级处理：返回模拟数据
             mock = random.choice(MOCK_DISEASES)
             return {
@@ -123,7 +197,7 @@ class YOLOModel:
             }
 
         try:
-            results = self._model(image_path)
+            results = model(image_path)
             result = results[0]
 
             disease_name = '健康'
@@ -138,7 +212,6 @@ class YOLOModel:
                 box = result.boxes[best_idx]
                 class_id = int(box.cls[0])
                 confidence = float(box.conf[0])
-                xyxy = box.xyxy[0].tolist()
                 label = result.names[class_id]
 
                 # 映射为中文名称
@@ -163,7 +236,6 @@ class YOLOModel:
 
                 # 保存标注结果图
                 import uuid
-                from pathlib import Path
                 results_dir = settings.MEDIA_ROOT / 'results'
                 results_dir.mkdir(parents=True, exist_ok=True)
                 result_filename = f"result_{uuid.uuid4().hex}.jpg"
@@ -179,7 +251,7 @@ class YOLOModel:
                 'result_image_path': result_image_path,
             }
 
-        except Exception as e:
+        except Exception:
             # 推理失败时降级
             mock = random.choice(MOCK_DISEASES)
             return {
