@@ -179,6 +179,39 @@ class PasswordView(APIView):
         return Response({"code": 200, "msg": "密码修改成功", "data": None})
 
 
+class ResetPasswordView(APIView):
+    """忘记密码 - 通过用户名和手机号重置密码"""
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        username = request.data.get('username')
+        phone = request.data.get('phone')
+        captcha = request.data.get('captcha')
+        captcha_token = request.data.get('captcha_token')
+        new_password = request.data.get('new_password')
+
+        if not all([username, phone, new_password]):
+            return Response({"code": 400, "msg": "用户名、手机号和新密码不能为空"})
+
+        if not _check_captcha(captcha_token, captcha, delete_after_verify=True):
+            return Response({"code": 400, "msg": "图形验证码错误或已过期"})
+
+        user = User.objects.filter(username=username, phone=phone).first()
+        if not user:
+            return Response({"code": 404, "msg": "用户信息验证失败"})
+
+        if user.is_active == 0:
+            return Response({"code": 403, "msg": "账号已被禁用，请联系管理员"})
+
+        if len(new_password) < 8:
+            return Response({"code": 400, "msg": "新密码长度至少为8位"})
+
+        user.password = make_password(new_password)
+        user.save(update_fields=['password'])
+        return Response({"code": 200, "msg": "密码重置成功，请使用新密码登录", "data": None})
+
+
 class AdminUserListView(APIView):
     """管理员：用户列表"""
     authentication_classes = [JWTAuthentication]
