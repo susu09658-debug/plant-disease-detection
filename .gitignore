@@ -1,32 +1,32 @@
-# Python / Django
-__pycache__/
-*.py[cod]
-*$py.class
-venv/
-env/
-.env
-db.sqlite3
-media/  # 存放用户上传的病害图片，不进仓库
-backend/media/
-backend/db.sqlite3
+# Python / Django 项目相关
+__pycache__/          # Python 解释器生成的字节码缓存目录，自动生成无需提交
+*.py[cod]             # .pyc / .pyo / .pyd 字节码文件，编译产物
+*$py.class            # Jython 生成的类文件，极少用到
+venv/                 # Python 虚拟环境目录（标准命名）
+env/                  # Python 虚拟环境目录（常用别名）
+.env                  # 环境变量配置文件（含密钥、密码，严禁提交）
+db.sqlite3            # Django 默认 SQLite 数据库文件，本地数据不提交
+media/                # Django 媒体文件：用户上传的病害图片，动态资源不进仓库
+backend/media/        # 后端目录下的媒体文件，同上
+backend/db.sqlite3    # 后端目录下的数据库文件
 
-# Node / Vue
-node_modules/
-dist/
-.DS_Store
+# Node / Vue 前端项目相关
+node_modules/         # Node.js 依赖包，体积大，通过 package.json 安装即可
+dist/                 # 前端打包构建产物（生产环境代码），可重新生成
+.DS_Store             # macOS 系统自动生成的隐藏文件，无业务意义
 
-# YOLO / AI 相关
-runs/   # 训练产生的日志和中间权重
-*.pt    # 除非是最终模型，否则不建议全部提交
-datasets/plant_disease/images/  # 图片文件不进仓库
-datasets/plant_disease/labels/  # 标注文件不进仓库
-datasets/plantdoc_raw/          # 原始下载数据不进仓库
+# YOLO / AI 模型训练相关
+runs/                 # YOLO 训练输出：日志、验证结果、中间权重文件，训练产物
+*.pt                  # PyTorch 模型权重文件（仅保留最终模型，中间权重不提交）
+datasets/plant_disease/images/  # 病害数据集图片，原始数据不进仓库
+datasets/plant_disease/labels/  # 数据集标注文件，原始标注不进仓库
+datasets/plantdoc_raw/          # 原始未处理数据集，不进仓库
 
-# IDE
-.vscode/
-.idea/
+# IDE 编辑器配置
+.vscode/              # VS Code 编辑器配置（个人偏好，不共享）
+.idea/                # PyCharm / IDEA 编辑器配置，团队不通用
 
-# OS
-Thumbs.db
-*.swp
-*.swo
+# 操作系统临时文件
+Thumbs.db             # Windows 系统图片缓存文件
+*.swp                 # Vim 编辑器临时交换文件
+*.swo                 # Vim 异常退出残留文件
