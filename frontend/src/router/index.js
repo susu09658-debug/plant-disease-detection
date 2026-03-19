@@ -45,13 +45,13 @@ const router = createRouter({
                     path: 'dataset',
                     name: 'dataset',
                     component: () => import('../views/DatasetManage.vue'),
-                    meta: { title: '数据集管理' },
+                    meta: { title: '数据集管理', admin: true },
                 },
                 {
                     path: 'training',
                     name: 'training',
                     component: () => import('../views/TrainingManage.vue'),
-                    meta: { title: '模型训练' },
+                    meta: { title: '模型训练', admin: true },
                 },
                 {
                     path: 'experiment',

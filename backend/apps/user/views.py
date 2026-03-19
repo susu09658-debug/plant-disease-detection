@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from utils.authentication import JWTAuthentication
 from utils.jwt_utils import generate_token
+from utils.permissions import IsAdminUser
 
 from .models import User
 from .serializers import RegisterSerializer, UserSerializer
@@ -215,10 +216,9 @@ class ResetPasswordView(APIView):
 class AdminUserListView(APIView):
     """管理员：用户列表"""
     authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUser]
 
     def get(self, request):
-        if not request.user or request.user.is_admin != 1:
-            return Response({"code": 403, "msg": "无权限"})
         page = int(request.query_params.get('page', 1))
         page_size = int(request.query_params.get('page_size', 10))
         keyword = request.query_params.get('keyword', '')
@@ -246,10 +246,9 @@ class AdminUserListView(APIView):
 class AdminUserDetailView(APIView):
     """管理员：编辑/删除用户"""
     authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUser]
 
     def put(self, request, pk):
-        if not request.user or request.user.is_admin != 1:
-            return Response({"code": 403, "msg": "无权限"})
         user = User.objects.filter(id=pk).first()
         if not user:
             return Response({"code": 404, "msg": "用户不存在"})
@@ -265,8 +264,6 @@ class AdminUserDetailView(APIView):
         return Response({"code": 200, "msg": "更新成功", "data": serializer.data})
 
     def delete(self, request, pk):
-        if not request.user or request.user.is_admin != 1:
-            return Response({"code": 403, "msg": "无权限"})
         if str(request.user.id) == str(pk):
             return Response({"code": 400, "msg": "不能删除自己"})
         User.objects.filter(id=pk).delete()
