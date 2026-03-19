@@ -109,10 +109,26 @@ class ExperimentMetricsView(APIView):
     def get(self, request):
         run_dir = _find_latest_run()
         if not run_dir:
+            data_config = _get_data_config()
             return Response({
                 'code': 200,
                 'msg': '暂无训练数据',
-                'data': self._demo_metrics(),
+                'data': {
+                    'metrics': self._demo_metrics(),
+                    'train_config': {
+                        'model': 'yolo11n.pt',
+                        'epochs': 100,
+                        'batch': 16,
+                        'imgsz': 640,
+                        'optimizer': 'SGD',
+                        'lr0': 0.01,
+                    },
+                    'class_names': data_config.get('names', {}),
+                    'class_names_cn': data_config.get('names_cn', {}),
+                    'num_classes': data_config.get('nc', 0),
+                    'charts': {},
+                    'run_name': '',
+                },
             })
 
         # 解析 CSV 获取最终指标

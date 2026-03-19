@@ -124,7 +124,7 @@ class DatasetOverviewView(APIView):
             'data': {
                 'dataset_exists': dataset_exists,
                 'dataset_name': 'PlantDoc',
-                'dataset_source': 'Kaggle (mrigaankbhatt/plantdoc-dataset)',
+                'dataset_source': 'DatasetNinja (datasetninja.com/plantdoc)',
                 'num_classes': nc,
                 'total_images': total_images,
                 'total_labels': total_labels,
