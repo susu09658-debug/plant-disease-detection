@@ -1,0 +1,1 @@
+import{t as e}from"./request-yFDsiti6.js";var t=t=>e.get(`/knowledge/list/`,{params:t}),n=t=>e.post(`/knowledge/manage/`,t),r=(t,n)=>e.put(`/knowledge/manage/${t}/`,n),i=t=>e.delete(`/knowledge/manage/${t}/`);export{r as i,i as n,t as r,n as t};

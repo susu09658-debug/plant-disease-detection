@@ -94,15 +94,20 @@ class YOLOModel:
             path = str(settings.YOLO_MODEL_PATH)
             return path if os.path.exists(path) else None
 
+        # 安全校验：仅允许简单文件名，防止路径穿越
+        basename = os.path.basename(model_key)
+        if basename != model_key or '..' in model_key or '/' in model_key or '\\' in model_key:
+            return None
+
         # 优先在模型目录中查找 model_key.pt
-        candidate = model_dir / f'{model_key}.pt'
-        if candidate.exists():
+        candidate = (model_dir / f'{basename}.pt').resolve()
+        if candidate.exists() and str(candidate).startswith(str(model_dir.resolve())):
             return str(candidate)
 
         # 已包含 .pt 后缀
-        if model_key.endswith('.pt'):
-            candidate = model_dir / model_key
-            if candidate.exists():
+        if basename.endswith('.pt'):
+            candidate = (model_dir / basename).resolve()
+            if candidate.exists() and str(candidate).startswith(str(model_dir.resolve())):
                 return str(candidate)
 
         return None
