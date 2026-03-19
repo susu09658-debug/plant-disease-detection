@@ -113,6 +113,40 @@
 {"old_password": "OldPass123", "new_password": "NewPass456"}
 ```
 
+### 1.8 忘记密码（重置密码）
+
+- **POST** `/api/user/reset-password/`
+- 认证：无
+
+请求体：
+```json
+{
+  "username": "testuser",
+  "phone": "13800138000",
+  "new_password": "NewPassword123",
+  "captcha": "A1B2",
+  "captcha_token": "abc123..."
+}
+```
+
+响应：
+```json
+{
+  "code": 200,
+  "msg": "密码重置成功，请使用新密码登录",
+  "data": null
+}
+```
+
+错误响应：
+| code | msg |
+|------|-----|
+| 400 | 用户名、手机号和新密码不能为空 |
+| 400 | 图形验证码错误或已过期 |
+| 400 | 新密码长度至少为8位 |
+| 403 | 账号已被禁用，请联系管理员 |
+| 404 | 用户信息验证失败 |
+
 ---
 
 ## 二、检测模块 `/api/detect/`
@@ -272,7 +306,7 @@
     },
     "class_names": { "0": "Apple_Scab_Leaf", "1": "Apple_leaf" },
     "class_names_cn": { "0": "苹果黑星病叶", "1": "苹果健康叶" },
-    "num_classes": 28,
+    "num_classes": 30,
     "charts": { "results": "results.png", "confusion_matrix": "confusion_matrix.png" },
     "run_name": "plant_disease"
   }
@@ -319,7 +353,7 @@
     "model_loaded": true,
     "model_path": "/path/to/model/best.pt",
     "model_version": "yolo11n.pt",
-    "num_classes": 28,
+    "num_classes": 30,
     "class_names": { "0": "Apple_Scab_Leaf" },
     "class_names_cn": { "0": "苹果黑星病叶" },
     "input_size": 640,
@@ -385,7 +419,7 @@
       { "name": "yolo11n.pt", "params": "2.6M", "desc": "超轻量 - 适合快速实验" },
       { "name": "yolo11s.pt", "params": "9.4M", "desc": "轻量 - 平衡精度与速度" }
     ],
-    "num_classes": 28,
+    "num_classes": 30,
     "optimizer_options": ["SGD", "Adam", "AdamW"]
   }
 }
@@ -409,8 +443,8 @@
   "data": {
     "dataset_exists": true,
     "dataset_name": "PlantDoc",
-    "dataset_source": "Kaggle (mrigaankbhatt/plantdoc-dataset)",
-    "num_classes": 28,
+    "dataset_source": "DatasetNinja (datasetninja.com/plantdoc)",
+    "num_classes": 30,
     "total_images": 2598,
     "total_labels": 2598,
     "splits": {
