@@ -14,13 +14,16 @@ from .serializers import DetectRecordSerializer
 
 
 class DetectUploadView(APIView):
-    """图片上传与 YOLOv8 检测接口"""
+    """图片上传与 YOLOv11 检测接口（支持选择不同模型）"""
     authentication_classes = [JWTAuthentication]
 
     def post(self, request):
         image_file = request.FILES.get('image')
         if not image_file:
             return Response({'code': 400, 'msg': '请上传图片文件'})
+
+        # 获取用户选择的模型（可选）
+        model_key = request.data.get('model_key', None) or None
 
         # 保存原始图片
         uploads_dir = settings.MEDIA_ROOT / 'uploads'
@@ -34,9 +37,9 @@ class DetectUploadView(APIView):
 
         original_img_rel = f"uploads/{filename}"
 
-        # 调用 YOLOv8 推理
+        # 调用 YOLOv11 推理（支持模型选择）
         from utils.yolo_model import yolo_model
-        result = yolo_model.detect(str(save_path))
+        result = yolo_model.detect(str(save_path), model_key=model_key)
 
         # 保存检测记录
         record = DetectRecord.objects.create(
@@ -60,6 +63,7 @@ class DetectUploadView(APIView):
                 'result_img_url': request.build_absolute_uri(
                     settings.MEDIA_URL + result.get('result_image_path', original_img_rel)
                 ),
+                'model_used': result.get('model_used', ''),
             }
         })
 
@@ -175,4 +179,18 @@ class DetectStatsView(APIView):
                 'disease_distribution': disease_dist,
                 'weekly_trend': trend,
             }
+        })
+
+
+class DetectModelsView(APIView):
+    """获取可用检测模型列表"""
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        from utils.yolo_model import YOLOModel
+        models = YOLOModel.get_available_models()
+        return Response({
+            'code': 200,
+            'msg': '查询成功',
+            'data': models,
         })

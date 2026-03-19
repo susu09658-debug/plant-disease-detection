@@ -320,16 +320,46 @@ def _collect_supervisely_pairs(source):
     return pairs
 
 
+def _has_presplit_dirs(source):
+    """
+    检测是否为 DatasetNinja 预划分格式（train/test 子目录各含 img/ann）。
+
+    DatasetNinja 下载解压后的目录结构:
+        plantdoc-DatasetNinja/
+        ├── train/
+        │   ├── img/
+        │   └── ann/
+        └── test/
+            ├── img/
+            └── ann/
+
+    Returns:
+        bool: True 表示检测到预划分目录结构
+    """
+    train_dir = source / 'train'
+    test_dir = source / 'test'
+    return (
+        train_dir.is_dir()
+        and test_dir.is_dir()
+        and (train_dir / 'img').is_dir()
+        and (train_dir / 'ann').is_dir()
+        and (test_dir / 'img').is_dir()
+        and (test_dir / 'ann').is_dir()
+    )
+
+
 def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
     """
     将 PlantDoc 原始数据集转换为 YOLO 格式。
 
     自动检测标注格式（Supervisely JSON 或 VOC XML）并调用对应转换器。
+    如果检测到 DatasetNinja 预划分目录（train/test 各含 img/ann），
+    将保留 test 集不变，从 train 中拆分出 val 集。
 
     Args:
         source_dir: 原始数据集目录
-        train_ratio: 训练集比例
-        val_ratio: 验证集比例
+        train_ratio: 训练集比例（仅在无预划分时使用）
+        val_ratio: 验证集比例（预划分时从原 train 中拆分的比例）
     """
     source = Path(source_dir)
     if not source.exists():
@@ -343,7 +373,11 @@ def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
     print(f'  检测到标注格式: {ann_format}')
 
     if ann_format == 'supervisely':
-        _convert_supervisely(source, train_ratio, val_ratio)
+        if _has_presplit_dirs(source):
+            print('  检测到 DatasetNinja 预划分目录结构 (train/test)')
+            _convert_supervisely_presplit(source, val_ratio)
+        else:
+            _convert_supervisely(source, train_ratio, val_ratio)
     elif ann_format == 'voc':
         _convert_voc(source, train_ratio, val_ratio)
     else:
@@ -352,8 +386,93 @@ def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
         sys.exit(1)
 
 
+def _collect_split_pairs(split_dir):
+    """
+    收集单个划分目录（如 train/ 或 test/）中的图片-标注对。
+
+    Args:
+        split_dir: 包含 img/ 和 ann/ 的目录
+
+    Returns:
+        list: [(img_path, ann_path), ...] 图片-标注对列表
+    """
+    pairs = []
+    img_dir = split_dir / 'img'
+    ann_dir = split_dir / 'ann'
+    if not img_dir.is_dir() or not ann_dir.is_dir():
+        return pairs
+    for ext in ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.JPG', '*.JPEG', '*.PNG']:
+        for img_path in img_dir.glob(ext):
+            ann_path = ann_dir / (img_path.name + '.json')
+            if not ann_path.exists():
+                ann_path = ann_dir / (img_path.stem + '.json')
+            if ann_path.exists():
+                pairs.append((img_path, ann_path))
+    return pairs
+
+
+def _convert_supervisely_presplit(source, val_ratio=0.1):
+    """
+    转换 DatasetNinja 预划分格式的 Supervisely JSON 数据集。
+
+    保留原始 test 集不变，从原始 train 集中拆分出 val 集。
+
+    Args:
+        source: DatasetNinja 数据集根目录
+        val_ratio: 从 train 中拆分为 val 的比例
+    """
+    train_pairs = _collect_split_pairs(source / 'train')
+    test_pairs = _collect_split_pairs(source / 'test')
+
+    print(f'  原始 train 集: {len(train_pairs)} 对图片-标注')
+    print(f'  原始 test 集:  {len(test_pairs)} 对图片-标注')
+
+    if not train_pairs and not test_pairs:
+        print('  警告: 没有找到 Supervisely 格式的图片-标注对')
+        print('  请确保目录结构为: train/img/, train/ann/, test/img/, test/ann/')
+        return
+
+    # 从 train 中拆分 val
+    random.seed(42)
+    random.shuffle(train_pairs)
+
+    n_val = int(len(train_pairs) * val_ratio)
+    val_pairs = train_pairs[:n_val]
+    new_train_pairs = train_pairs[n_val:]
+
+    splits = {
+        'train': new_train_pairs,
+        'val': val_pairs,
+        'test': test_pairs,
+    }
+
+    stats = Counter()
+
+    for split_name, split_pairs in splits.items():
+        print(f'\n  处理 {split_name} 集 ({len(split_pairs)} 张) ...')
+        for img_path, ann_path in split_pairs:
+            yolo_lines = convert_supervisely_to_yolo(ann_path)
+            if not yolo_lines:
+                continue
+
+            # 复制图片
+            dst_img = DATASET_DIR / 'images' / split_name / img_path.name
+            shutil.copy2(img_path, dst_img)
+
+            # 写入标注
+            dst_label = DATASET_DIR / 'labels' / split_name / (img_path.stem + '.txt')
+            with open(dst_label, 'w') as f:
+                f.write('\n'.join(yolo_lines) + '\n')
+
+            for line in yolo_lines:
+                class_id = int(line.split()[0])
+                stats[PLANTDOC_CLASSES[class_id]] += 1
+
+    _print_conversion_stats(splits, stats)
+
+
 def _convert_supervisely(source, train_ratio, val_ratio):
-    """转换 Supervisely JSON 格式数据集"""
+    """转换 Supervisely JSON 格式数据集（无预划分时使用）"""
     pairs = _collect_supervisely_pairs(source)
     print(f'  找到 {len(pairs)} 对图片-标注 (Supervisely JSON)')
 

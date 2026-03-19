@@ -157,9 +157,10 @@
 - 认证：Bearer Token
 - Content-Type: multipart/form-data
 
-| 参数  | 类型 | 必填 | 说明               |
-|-------|------|------|--------------------|
-| image | File | 是   | JPG/PNG，最大 10MB |
+| 参数      | 类型   | 必填 | 说明                               |
+|-----------|--------|------|------------------------------------|
+| image     | File   | 是   | JPG/PNG，最大 10MB                 |
+| model_key | String | 否   | 模型标识（如 best、yolo11n、yolo11s），默认使用 best |
 
 响应：
 ```json
@@ -172,7 +173,8 @@
     "confidence": 0.932,
     "original_img_url": "http://127.0.0.1:8000/media/uploads/xxx.jpg",
     "result_img_url": "http://127.0.0.1:8000/media/results/xxx.jpg",
-    "detect_time": "2026-03-17T20:00:00"
+    "detect_time": "2026-03-17T20:00:00",
+    "model_used": "best.pt"
   }
 }
 ```
@@ -205,6 +207,22 @@
 
 - **GET** `/api/detect/stats/`
 - 认证：Bearer Token
+
+### 2.7 可用模型列表
+
+- **GET** `/api/detect/models/`
+- 认证：Bearer Token
+
+响应：
+```json
+{
+  "code": 200,
+  "data": [
+    {"key": "best", "name": "best.pt", "path": "/path/to/best.pt", "size_mb": 5.21},
+    {"key": "yolo11n", "name": "yolo11n.pt", "path": "/path/to/yolo11n.pt", "size_mb": 5.35}
+  ]
+}
+```
 
 ---
 
