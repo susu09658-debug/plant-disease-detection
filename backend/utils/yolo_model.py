@@ -87,6 +87,8 @@ class YOLOModel:
         if model_dir.is_dir():
             for pt_file in sorted(model_dir.glob('*.pt')):
                 size_mb = pt_file.stat().st_size / (1024 * 1024)
+                if size_mb < 0.01:
+                    continue  # 跳过空文件或损坏文件
                 key = pt_file.stem  # e.g. 'best', 'yolo11n', 'yolo11s'
                 models.append({
                     'key': key,

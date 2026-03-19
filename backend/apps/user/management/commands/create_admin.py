@@ -27,8 +27,8 @@ class Command(BaseCommand):
         phone = options['phone']
         email = options['email']
 
-        if len(password) < 6:
-            raise CommandError('密码长度至少为 6 位')
+        if len(password) < 8:
+            raise CommandError('密码长度至少为 8 位')
 
         if User.objects.filter(username=username).exists():
             # 如果用户已存在，将其升级为管理员
@@ -45,7 +45,7 @@ class Command(BaseCommand):
             username=username,
             password=make_password(password),
             phone=phone,
-            email=email or None,
+            email=email if email else None,
             is_admin=1,
             is_active=1,
         )

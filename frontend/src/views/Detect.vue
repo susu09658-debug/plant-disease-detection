@@ -135,6 +135,8 @@ import { ElMessage } from 'element-plus';
 import { Refresh } from '@element-plus/icons-vue';
 import { uploadDetect, getDetectModels } from '../api/detect';
 
+const DEFAULT_MODEL = { key: 'best', name: 'best.pt', size_mb: 0 };
+
 const detecting = ref(false);
 const result = ref(null);
 const uploadRef = ref(null);
@@ -149,8 +151,8 @@ const loadModels = async () => {
             selectedModel.value = modelList.value[0].key;
         }
     } catch (e) {
-        modelList.value = [{ key: 'best', name: 'best.pt', size_mb: 0 }];
-        selectedModel.value = 'best';
+        modelList.value = [DEFAULT_MODEL];
+        selectedModel.value = DEFAULT_MODEL.key;
     }
 };
 
