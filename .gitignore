@@ -13,6 +13,7 @@ backend/db.sqlite3    # 后端目录下的数据库文件
 # Node / Vue 前端项目相关
 node_modules/         # Node.js 依赖包，体积大，通过 package.json 安装即可
 dist/                 # 前端打包构建产物（生产环境代码），可重新生成
+.vite/                # Vite 缓存目录
 .DS_Store             # macOS 系统自动生成的隐藏文件，无业务意义
 
 # YOLO / AI 模型训练相关
