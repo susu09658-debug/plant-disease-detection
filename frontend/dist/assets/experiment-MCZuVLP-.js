@@ -1,0 +1,1 @@
+import{t as e}from"./request-yFDsiti6.js";var t=()=>e.get(`/experiment/metrics/`),n=()=>e.get(`/experiment/curves/`),r=()=>e.get(`/experiment/model-info/`),i=()=>e.get(`/experiment/train-history/`),a=()=>e.get(`/experiment/train-config/`);export{i as a,n as i,r as n,a as r,t};
