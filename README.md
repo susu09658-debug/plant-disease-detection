@@ -22,7 +22,7 @@
 - **忘记密码**：通过用户名+手机号+验证码重置密码
 - **JWT 认证**：安全的 Token 认证，7天有效期，自动续期
 - **系统首页**：检测统计卡片 + 近7天趋势图 + 病害分布图 + 模型状态
-- **病害检测**：拖拽上传图片，调用 YOLOv11 推理，展示标注结果及检测框详情
+- **病害检测**：拖拽上传图片，调用 YOLOv11 推理，展示标注结果及检测框详情，支持选择不同模型进行检测
 - **历史记录**：分页列表，支持搜索、单条/批量删除，查看详情
 - **知识库**：病害知识卡片展示，支持按植物/病害名搜索，点击查看详情
 - **数据集管理**（新增）：PlantDoc 数据集概览、类别分布、划分统计、数据集准备指南
@@ -30,6 +30,7 @@
 - **实验结果**：展示模型训练曲线（损失/mAP/Precision/Recall）、评估指标、各类别 AP、实验设计说明
 - **个人中心**：查看/修改个人信息、修改密码
 - **管理后台**（管理员专属）：用户管理、知识库管理、数据集管理、模型训练管理（基于权限类控制）
+- **管理员创建**：通过 `python manage.py create_admin` 命令行创建管理员用户
 
 ## 四、项目结构
 
@@ -101,6 +102,8 @@ pip install -r ../requirements.txt
 mysql -u root -p -e "CREATE DATABASE plant_disease_db DEFAULT CHARACTER SET utf8mb4;"
 # 执行迁移
 python manage.py migrate
+# 创建管理员用户
+python manage.py create_admin --username admin --password admin123
 # 启动开发服务器
 python manage.py runserver
 ```
@@ -119,20 +122,33 @@ npm run dev
 
 将训练好的 `best.pt` 权重文件放置到 `model/` 目录下。如果模型文件不存在，系统会自动返回模拟数据，不影响其他功能使用。
 
+可以在 `model/` 目录下放置多个 `.pt` 模型文件（如 `best.pt`、`yolo11n.pt`、`yolo11s.pt`），在病害检测页面可以选择不同的模型进行检测。
+
 ### 数据集准备（PlantDoc）
 
 ```bash
-# 方式一：手动下载后转换
-# 从 DatasetNinja 下载 PlantDoc 数据集，解压后运行：
-python yolo/prepare_plantdoc.py --source /path/to/plantdoc_raw
+# 从 DatasetNinja 网站下载 PlantDoc 数据集（Supervisely 格式）:
+#   https://datasetninja.com/plantdoc
+# 解压后目录结构为:
+#   plantdoc-DatasetNinja/
+#   ├── train/
+#   │   ├── img/   # 训练图片 (2251张)
+#   │   └── ann/   # JSON 标注文件
+#   └── test/
+#       ├── img/   # 测试图片 (231张)
+#       └── ann/   # JSON 标注文件
 
-# 方式二：使用 DatasetNinja CLI 自动下载
-pip install dataset-ninja
+# 将数据集转换为 YOLO 格式（自动检测预划分目录，从 train 拆分 val）
+python yolo/prepare_plantdoc.py --source /path/to/plantdoc-DatasetNinja
+
+# 也可以尝试从 GitHub Releases 自动下载
 python yolo/prepare_plantdoc.py --download
 
 # 验证数据集
 python yolo/prepare_plantdoc.py --validate
 ```
+
+> **注意**: `dataset-ninja` 包不在公共 PyPI 上，请从 https://datasetninja.com/plantdoc 手动下载数据集后使用 `--source` 参数指定路径。
 
 ### 模型训练
 

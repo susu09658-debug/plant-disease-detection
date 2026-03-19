@@ -61,35 +61,95 @@ CLASS_NAME_MAP = {
 
 
 class YOLOModel:
-    """YOLOv11 模型推理工具（单例模式）"""
+    """YOLOv11 模型推理工具（支持多模型切换）"""
 
     _instance = None
-    _model = None
+    _models = {}         # model_key -> loaded YOLO model
+    _current_key = None  # 当前使用的模型 key
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def _load_model(self):
-        """懒加载模型"""
-        if self._model is not None:
+    @staticmethod
+    def get_available_models():
+        """
+        获取可用模型列表。
+
+        扫描 model/ 目录下的 .pt 文件，返回模型信息列表。
+
+        Returns:
+            list[dict]: [{'key': 'best', 'name': 'best.pt', 'path': '...', 'size_mb': 5.2}, ...]
+        """
+        model_dir = settings.YOLO_MODEL_PATH.parent
+        models = []
+        if model_dir.is_dir():
+            for pt_file in sorted(model_dir.glob('*.pt')):
+                size_mb = pt_file.stat().st_size / (1024 * 1024)
+                if size_mb < 0.01:
+                    continue  # 跳过空文件或损坏文件
+                key = pt_file.stem  # e.g. 'best', 'yolo11n', 'yolo11s'
+                models.append({
+                    'key': key,
+                    'name': pt_file.name,
+                    'path': str(pt_file),
+                    'size_mb': round(size_mb, 2),
+                })
+        # 如果目录为空或不存在，返回默认项
+        if not models:
+            models.append({
+                'key': 'best',
+                'name': 'best.pt',
+                'path': str(settings.YOLO_MODEL_PATH),
+                'size_mb': 0,
+            })
+        return models
+
+    def _load_model(self, model_key=None):
+        """
+        懒加载指定模型。
+
+        Args:
+            model_key: 模型标识（.pt 文件的 stem 名），为 None 时使用默认模型
+
+        Returns:
+            bool: 是否加载成功
+        """
+        if model_key is None:
+            model_key = 'best'
+
+        # 如果已缓存直接返回
+        if model_key in self._models:
+            self._current_key = model_key
             return True
-        model_path = str(settings.YOLO_MODEL_PATH)
-        if not os.path.exists(model_path):
-            return False
+
+        # 查找模型文件
+        model_dir = settings.YOLO_MODEL_PATH.parent
+        model_path = model_dir / f'{model_key}.pt'
+        if not model_path.exists():
+            # 兼容默认路径
+            model_path = settings.YOLO_MODEL_PATH
+            if not model_path.exists():
+                return False
+
         try:
             from ultralytics import YOLO
-            self._model = YOLO(model_path)
+            self._models[model_key] = YOLO(str(model_path))
+            self._current_key = model_key
             return True
         except Exception:
             return False
 
-    def detect(self, image_path):
+    def detect(self, image_path, model_key=None):
         """
         对输入图片执行病害检测。
 
         如果模型文件不存在，返回模拟数据（便于开发调试）。
+
+        Args:
+            image_path: 图片路径
+            model_key: 使用的模型标识（可选，默认使用 best.pt）
 
         Returns:
             dict: {
@@ -98,9 +158,10 @@ class YOLOModel:
                 'confidence': float,
                 'bbox_data': list,
                 'result_image_path': str,
+                'model_used': str,
             }
         """
-        model_loaded = self._load_model()
+        model_loaded = self._load_model(model_key)
 
         if not model_loaded:
             # 降级处理：返回模拟数据
@@ -120,10 +181,12 @@ class YOLOModel:
                     }
                 ],
                 'result_image_path': image_path,  # 无标注图时返回原图路径
+                'model_used': '模拟数据（模型未加载）',
             }
 
         try:
-            results = self._model(image_path)
+            model = self._models[self._current_key]
+            results = model(image_path)
             result = results[0]
 
             disease_name = '健康'
@@ -177,6 +240,7 @@ class YOLOModel:
                 'confidence': confidence,
                 'bbox_data': bbox_data,
                 'result_image_path': result_image_path,
+                'model_used': f'{self._current_key}.pt',
             }
 
         except Exception as e:
@@ -188,6 +252,7 @@ class YOLOModel:
                 'confidence': round(random.uniform(0.75, 0.99), 4),
                 'bbox_data': [],
                 'result_image_path': image_path,
+                'model_used': '模拟数据（推理异常）',
             }
 
 

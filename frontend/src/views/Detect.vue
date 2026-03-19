@@ -5,6 +5,26 @@
     <el-card shadow="never" class="upload-card">
       <template #header><span class="card-title">上传植物图片</span></template>
 
+      <!-- 模型选择 -->
+      <div class="model-select-row">
+        <span class="model-label">检测模型：</span>
+        <el-select
+          v-model="selectedModel"
+          placeholder="默认模型"
+          size="default"
+          style="width: 220px;"
+          :disabled="detecting"
+        >
+          <el-option
+            v-for="m in modelList"
+            :key="m.key"
+            :label="m.name + (m.size_mb ? ` (${m.size_mb} MB)` : '')"
+            :value="m.key"
+          />
+        </el-select>
+        <el-button :icon="Refresh" circle size="small" @click="loadModels" title="刷新模型列表" />
+      </div>
+
       <el-upload
         ref="uploadRef"
         class="upload-area"
@@ -68,6 +88,9 @@
         <el-descriptions-item label="检测时间">
           {{ result.detect_time }}
         </el-descriptions-item>
+        <el-descriptions-item v-if="result.model_used" label="使用模型">
+          <el-tag size="small" type="info">{{ result.model_used }}</el-tag>
+        </el-descriptions-item>
       </el-descriptions>
 
       <!-- 检测框详情 -->
@@ -107,13 +130,35 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { uploadDetect } from '../api/detect';
+import { Refresh } from '@element-plus/icons-vue';
+import { uploadDetect, getDetectModels } from '../api/detect';
+
+const DEFAULT_MODEL = { key: 'best', name: 'best.pt', size_mb: 0 };
 
 const detecting = ref(false);
 const result = ref(null);
 const uploadRef = ref(null);
+const modelList = ref([]);
+const selectedModel = ref('');
+
+const loadModels = async () => {
+    try {
+        const res = await getDetectModels();
+        modelList.value = res.data || [];
+        if (modelList.value.length > 0 && !selectedModel.value) {
+            selectedModel.value = modelList.value[0].key;
+        }
+    } catch (e) {
+        modelList.value = [DEFAULT_MODEL];
+        selectedModel.value = DEFAULT_MODEL.key;
+    }
+};
+
+onMounted(() => {
+    loadModels();
+});
 
 const beforeUpload = (file) => {
     const isImage = ['image/jpeg', 'image/png', 'image/jpg'].includes(file.type);
@@ -135,6 +180,9 @@ const handleUpload = async ({ file }) => {
     try {
         const formData = new FormData();
         formData.append('image', file);
+        if (selectedModel.value) {
+            formData.append('model_key', selectedModel.value);
+        }
         const res = await uploadDetect(formData);
         result.value = res.data;
         ElMessage.success('检测完成！');
@@ -170,6 +218,19 @@ const getConfColor = (conf) => {
 
 .card-title {
     font-weight: 600;
+}
+
+.model-select-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.model-label {
+    font-size: 14px;
+    color: #606266;
+    white-space: nowrap;
 }
 
 .upload-area {

@@ -13,3 +13,5 @@ export const deleteRecord = (id) => request.delete(`/detect/history/${id}/`);
 export const batchDelete = (ids) => request.delete('/detect/history/', { data: { ids } });
 
 export const getStats = () => request.get('/detect/stats/');
+
+export const getDetectModels = () => request.get('/detect/models/');

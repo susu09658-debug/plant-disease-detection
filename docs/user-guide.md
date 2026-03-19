@@ -96,7 +96,7 @@
 - 普通用户在侧边栏中不会显示管理员专属菜单
 - 权限控制同时在前端路由守卫和后端 API 层（`IsAdminUser` 权限类）实施，确保安全
 
-> 💡 首个管理员账号可通过数据库直接设置 `is_admin=1`，之后可由管理员在用户管理页面为其他用户授权。
+> 💡 首个管理员账号可通过命令行创建：`python manage.py create_admin --username admin --password admin123`，之后可由管理员在用户管理页面为其他用户授权。
 
 ---
 
@@ -357,22 +357,23 @@
 
 ### 11.3 数据集准备
 
-#### 方式一：手动下载后转换
+#### 方式一：手动下载后转换（推荐）
 
-1. 访问 https://datasetninja.com/plantdoc 下载 PlantDoc 数据集
-2. 解压下载的数据集文件
-3. 运行转换脚本：
+1. 访问 https://datasetninja.com/plantdoc 下载 PlantDoc 数据集（Supervisely 格式）
+2. 解压后目录结构为：`train/img/`, `train/ann/`, `test/img/`, `test/ann/`
+3. 运行转换脚本（自动检测预划分目录，保留 test 集，从 train 中拆分出 val 集）：
 
 ```bash
-python yolo/prepare_plantdoc.py --source /path/to/plantdoc_raw
+python yolo/prepare_plantdoc.py --source /path/to/plantdoc-DatasetNinja
 ```
 
-#### 方式二：使用 DatasetNinja CLI 自动下载
+#### 方式二：从 GitHub Releases 自动下载
 
 ```bash
-pip install dataset-ninja
 python yolo/prepare_plantdoc.py --download
 ```
+
+> **注意**: `dataset-ninja` 包不在公共 PyPI 上，请使用方式一手动下载。
 
 #### 验证数据集
 
@@ -408,7 +409,7 @@ A：请联系系统管理员，管理员可以在用户管理页面查询所有�
 
 **Q：如何获取管理员权限？**
 
-A：请联系现有管理员，在管理后台的用户管理中设置管理员权限。首个管理员账号可通过数据库直接设置 `is_admin=1`。
+A：请联系现有管理员，在管理后台的用户管理中设置管理员权限。首个管理员账号可通过命令行创建：`python manage.py create_admin --username admin --password admin123`。
 
 **Q：上传图片后显示检测失败怎么办？**
 
