@@ -15,7 +15,7 @@ yolo/
 ├── export_model.py            # 模型格式导出工具
 ├── prepare_plantdoc.py        # PlantDoc 数据集准备脚本
 └── configs/
-    ├── data.yaml              # PlantDoc 数据集配置 (28 类)
+    ├── data.yaml              # PlantDoc 数据集配置 (30 类)
     └── train_config.yaml      # YOLOv11 训练超参数参考
 ```
 
@@ -31,11 +31,10 @@ pip install ultralytics torch torchvision
 
 ```bash
 # 方式一：手动下载后转换
-# 从 Kaggle 下载 PlantDoc 数据集，解压后运行：
+# 从 DatasetNinja 下载 PlantDoc 数据集，解压后运行：
 python yolo/prepare_plantdoc.py --source /path/to/plantdoc_raw
 
-# 方式二：使用 Kaggle CLI 自动下载
-pip install kaggle
+# 方式二：从 DatasetNinja GitHub Releases 自动下载
 python yolo/prepare_plantdoc.py --download
 
 # 查看数据集类别信息
@@ -45,7 +44,7 @@ python yolo/prepare_plantdoc.py --info
 python yolo/prepare_plantdoc.py --validate
 ```
 
-数据集下载地址：https://www.kaggle.com/datasets/mrigaankbhatt/plantdoc-dataset
+数据集下载地址：https://datasetninja.com/plantdoc
 
 确保转换后目录结构如下：
 
@@ -103,25 +102,25 @@ cp runs/train/plant_disease/weights/best.pt model/best.pt
 
 > 建议本科毕设使用 **YOLOv11n** 或 **YOLOv11s**，训练速度快且精度足够。
 
-## PlantDoc 数据集 (28 类)
+## PlantDoc 数据集 (30 类)
 
-PlantDoc 数据集包含 13 种植物的 28 类病害/健康状态：
+PlantDoc 数据集包含 13 种植物的 30 类病害/健康状态：
 
 | 植物 | 类别 |
 |------|------|
 | 苹果 | 黑星病叶、健康叶、锈病叶 |
-| 甜椒 | 叶斑病、健康叶 |
+| 甜椒 | 健康叶、叶斑病 |
 | 蓝莓 | 健康叶 |
 | 樱桃 | 健康叶 |
 | 玉米 | 灰斑病、叶枯病、锈病叶 |
-| 葡萄 | 黑腐病叶、健康叶、叶枯病 |
+| 葡萄 | 健康叶、黑腐病叶、叶枯病 |
 | 桃树 | 健康叶 |
-| 马铃薯 | 早疫病叶、晚疫病叶 |
+| 马铃薯 | 健康叶、早疫病叶、晚疫病叶 |
 | 覆盆子 | 健康叶 |
 | 大豆 | 健康叶 |
 | 南瓜 | 白粉病叶 |
 | 草莓 | 健康叶 |
-| 番茄 | 早疫病叶、叶斑病、健康叶、细菌性斑点病叶、晚疫病叶、花叶病毒叶、黄化曲叶病毒叶、霉病叶 |
+| 番茄 | 早疫病叶、叶斑病、健康叶、细菌性斑点病叶、晚疫病叶、花叶病毒叶、黄化曲叶病毒叶、霉病叶、二斑叶螨叶 |
 
 ## 训练输出
 

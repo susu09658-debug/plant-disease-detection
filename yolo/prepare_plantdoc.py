@@ -2,25 +2,27 @@
 PlantDoc 数据集准备脚本
 PlantDoc Dataset Preparation Script
 
-本脚本用于将 Kaggle PlantDoc 数据集转换为 YOLOv11 训练所需的格式。
-支持自动下载（需 kaggle CLI）、目录结构转换、标注格式验证和数据集划分。
+本脚本用于将 DatasetNinja PlantDoc 数据集转换为 YOLOv11 训练所需的格式。
+支持自动下载（从 GitHub Releases）、Supervisely JSON 与 VOC XML 标注格式自动检测、
+目录结构转换、标注格式验证和数据集划分。
 
 使用说明:
     # 方式一：已下载数据集并解压到指定目录
     python yolo/prepare_plantdoc.py --source /path/to/plantdoc_raw
 
-    # 方式二：使用 kaggle CLI 自动下载
+    # 方式二：从 DatasetNinja GitHub Releases 自动下载
     python yolo/prepare_plantdoc.py --download
 
     # 仅验证现有数据集
     python yolo/prepare_plantdoc.py --validate
 
 PlantDoc 数据集来源:
-    https://www.kaggle.com/datasets/mrigaankbhatt/plantdoc-dataset
+    https://datasetninja.com/plantdoc
+    https://github.com/dataset-ninja/PlantDoc/releases
 """
 
 import argparse
-import os
+import json
 import random
 import shutil
 import sys
@@ -31,22 +33,23 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DATASET_DIR = ROOT / 'datasets' / 'plant_disease'
 
-# PlantDoc 类别定义（28 个类别）
+# PlantDoc 类别定义（30 个类别，与 data.yaml 保持一致）
 PLANTDOC_CLASSES = [
     'Apple_Scab_Leaf',
     'Apple_leaf',
     'Apple_rust_leaf',
-    'Bell_pepper_leaf_spot',
     'Bell_pepper_leaf',
+    'Bell_pepper_leaf_spot',
     'Blueberry_leaf',
     'Cherry_leaf',
     'Corn_Gray_leaf_spot',
     'Corn_leaf_blight',
     'Corn_rust_leaf',
-    'Grape_leaf_black_rot',
     'Grape_leaf',
+    'Grape_leaf_black_rot',
     'Grape_leaf_blight',
     'Peach_leaf',
+    'Potato_leaf',
     'Potato_leaf_early_blight',
     'Potato_leaf_late_blight',
     'Raspberry_leaf',
@@ -61,6 +64,7 @@ PLANTDOC_CLASSES = [
     'Tomato_leaf_mosaic_virus',
     'Tomato_leaf_yellow_virus',
     'Tomato_mold_leaf',
+    'Tomato_two_spotted_spider_mites_leaf',
 ]
 
 # 常见的 PlantDoc 类名变体映射（处理数据集中名称不一致的情况）
@@ -70,6 +74,8 @@ CLASS_ALIASES = {
     'Apple rust leaf': 'Apple_rust_leaf',
     'Bell_pepper leaf spot': 'Bell_pepper_leaf_spot',
     'Bell_pepper leaf': 'Bell_pepper_leaf',
+    'Bell pepper leaf spot': 'Bell_pepper_leaf_spot',
+    'Bell pepper leaf': 'Bell_pepper_leaf',
     'Blueberry leaf': 'Blueberry_leaf',
     'Cherry leaf': 'Cherry_leaf',
     'Corn Gray leaf spot': 'Corn_Gray_leaf_spot',
@@ -80,6 +86,7 @@ CLASS_ALIASES = {
     'Grape leaf': 'Grape_leaf',
     'Grape leaf blight': 'Grape_leaf_blight',
     'Peach leaf': 'Peach_leaf',
+    'Potato leaf': 'Potato_leaf',
     'Potato leaf early blight': 'Potato_leaf_early_blight',
     'Potato leaf late blight': 'Potato_leaf_late_blight',
     'Raspberry leaf': 'Raspberry_leaf',
@@ -95,6 +102,8 @@ CLASS_ALIASES = {
     'Tomato leaf mosaic virus': 'Tomato_leaf_mosaic_virus',
     'Tomato leaf yellow virus': 'Tomato_leaf_yellow_virus',
     'Tomato mold leaf': 'Tomato_mold_leaf',
+    'Tomato two spotted spider mites leaf': 'Tomato_two_spotted_spider_mites_leaf',
+    'Tomato Two Spotted Spider Mites Leaf': 'Tomato_two_spotted_spider_mites_leaf',
 }
 
 
@@ -168,6 +177,104 @@ def convert_voc_to_yolo(xml_path, img_width, img_height):
     return lines
 
 
+def convert_supervisely_to_yolo(ann_path):
+    """
+    将 Supervisely JSON 标注转换为 YOLO TXT 格式。
+
+    Supervisely JSON 标注结构:
+        {
+            "size": {"height": H, "width": W},
+            "objects": [
+                {
+                    "classTitle": "Apple Scab Leaf",
+                    "points": {"exterior": [[x1,y1],[x2,y2]], "interior": []},
+                    ...
+                }
+            ]
+        }
+
+    Args:
+        ann_path: Supervisely JSON 标注文件路径
+
+    Returns:
+        list: YOLO 格式标注行列表
+    """
+    try:
+        with open(ann_path, 'r', encoding='utf-8') as f:
+            ann_data = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f'  警告: JSON 文件解析失败 {ann_path}: {e}')
+        return []
+
+    img_height = ann_data.get('size', {}).get('height', 0)
+    img_width = ann_data.get('size', {}).get('width', 0)
+    if img_height <= 0 or img_width <= 0:
+        print(f'  警告: 无效的图片尺寸 {ann_path}: {img_width}x{img_height}')
+        return []
+
+    lines = []
+    for obj in ann_data.get('objects', []):
+        class_name = obj.get('classTitle', '')
+        class_id = get_class_id(class_name)
+        if class_id < 0:
+            print(f'  警告: 未知类别 "{class_name}"，跳过')
+            continue
+
+        exterior = obj.get('points', {}).get('exterior', [])
+        if len(exterior) < 2:
+            continue
+
+        # 从多边形点集中提取边界框
+        xs = [p[0] for p in exterior]
+        ys = [p[1] for p in exterior]
+        xmin = min(xs)
+        ymin = min(ys)
+        xmax = max(xs)
+        ymax = max(ys)
+
+        # 转换为 YOLO 格式（归一化的中心坐标和宽高）
+        cx = ((xmin + xmax) / 2.0) / img_width
+        cy = ((ymin + ymax) / 2.0) / img_height
+        w = (xmax - xmin) / img_width
+        h = (ymax - ymin) / img_height
+
+        # 裁剪到 [0, 1] 范围
+        cx = max(0.0, min(1.0, cx))
+        cy = max(0.0, min(1.0, cy))
+        w = max(0.0, min(1.0, w))
+        h = max(0.0, min(1.0, h))
+
+        lines.append(f'{class_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}')
+
+    return lines
+
+
+def detect_annotation_format(source_dir):
+    """
+    自动检测数据集的标注格式。
+
+    Returns:
+        str: 'supervisely' | 'voc' | 'unknown'
+    """
+    source = Path(source_dir)
+
+    # 检查是否存在 meta.json（Supervisely 格式标志）
+    if (source / 'meta.json').exists():
+        return 'supervisely'
+
+    # 检查子目录中是否有 ann/ 目录（Supervisely 格式）
+    for subdir in source.iterdir():
+        if subdir.is_dir() and (subdir / 'ann').is_dir():
+            return 'supervisely'
+
+    # 检查是否有 XML 文件（VOC 格式）
+    xml_files = list(source.rglob('*.xml'))
+    if xml_files:
+        return 'voc'
+
+    return 'unknown'
+
+
 def setup_directories():
     """创建 YOLO 数据集目录结构"""
     for split in ['train', 'val', 'test']:
@@ -176,15 +283,48 @@ def setup_directories():
     print('  数据集目录结构已创建')
 
 
+def _collect_supervisely_pairs(source):
+    """
+    收集 Supervisely 格式数据集中的图片-标注对。
+
+    Supervisely 目录结构:
+        dataset/
+        ├── meta.json
+        ├── train/
+        │   ├── img/
+        │   └── ann/
+        └── test/
+            ├── img/
+            └── ann/
+
+    Returns:
+        list: [(img_path, ann_path), ...] 图片-标注对列表
+    """
+    pairs = []
+    for subdir in sorted(source.iterdir()):
+        if not subdir.is_dir():
+            continue
+        img_dir = subdir / 'img'
+        ann_dir = subdir / 'ann'
+        if not img_dir.is_dir() or not ann_dir.is_dir():
+            continue
+        for ext in ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.JPG', '*.JPEG', '*.PNG']:
+            for img_path in img_dir.glob(ext):
+                # Supervisely JSON: 原图文件名.json (e.g. img.jpg -> img.jpg.json)
+                # 也兼容 stem.json 格式 (e.g. img.jpg -> img.json)
+                ann_path = ann_dir / (img_path.name + '.json')
+                if not ann_path.exists():
+                    ann_path = ann_dir / (img_path.stem + '.json')
+                if ann_path.exists():
+                    pairs.append((img_path, ann_path))
+    return pairs
+
+
 def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
     """
     将 PlantDoc 原始数据集转换为 YOLO 格式。
 
-    PlantDoc 数据集通常有两种组织方式：
-      1. images/ + annotations/ (XML) 的分离结构
-      2. 按类别分目录的分类结构
-
-    本函数自动检测并处理两种结构。
+    自动检测标注格式（Supervisely JSON 或 VOC XML）并调用对应转换器。
 
     Args:
         source_dir: 原始数据集目录
@@ -198,16 +338,78 @@ def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
 
     setup_directories()
 
-    # 收集所有图片和标注
+    # 自动检测标注格式
+    ann_format = detect_annotation_format(source)
+    print(f'  检测到标注格式: {ann_format}')
+
+    if ann_format == 'supervisely':
+        _convert_supervisely(source, train_ratio, val_ratio)
+    elif ann_format == 'voc':
+        _convert_voc(source, train_ratio, val_ratio)
+    else:
+        print('  错误: 无法识别数据集标注格式')
+        print('  支持的格式: Supervisely JSON, Pascal VOC XML')
+        sys.exit(1)
+
+
+def _convert_supervisely(source, train_ratio, val_ratio):
+    """转换 Supervisely JSON 格式数据集"""
+    pairs = _collect_supervisely_pairs(source)
+    print(f'  找到 {len(pairs)} 对图片-标注 (Supervisely JSON)')
+
+    if not pairs:
+        print('  警告: 没有找到 Supervisely 格式的图片-标注对')
+        print('  请确保目录结构为: <split>/img/ 和 <split>/ann/')
+        return
+
+    # 随机打乱并划分数据集
+    random.seed(42)
+    random.shuffle(pairs)
+
+    n_total = len(pairs)
+    n_train = int(n_total * train_ratio)
+    n_val = int(n_total * val_ratio)
+
+    splits = {
+        'train': pairs[:n_train],
+        'val': pairs[n_train:n_train + n_val],
+        'test': pairs[n_train + n_val:],
+    }
+
+    stats = Counter()
+
+    for split_name, split_pairs in splits.items():
+        print(f'\n  处理 {split_name} 集 ({len(split_pairs)} 张) ...')
+        for img_path, ann_path in split_pairs:
+            yolo_lines = convert_supervisely_to_yolo(ann_path)
+            if not yolo_lines:
+                continue
+
+            # 复制图片
+            dst_img = DATASET_DIR / 'images' / split_name / img_path.name
+            shutil.copy2(img_path, dst_img)
+
+            # 写入标注
+            dst_label = DATASET_DIR / 'labels' / split_name / (img_path.stem + '.txt')
+            with open(dst_label, 'w') as f:
+                f.write('\n'.join(yolo_lines) + '\n')
+
+            for line in yolo_lines:
+                class_id = int(line.split()[0])
+                stats[PLANTDOC_CLASSES[class_id]] += 1
+
+    _print_conversion_stats(splits, stats)
+
+
+def _convert_voc(source, train_ratio, val_ratio):
+    """转换 VOC XML 格式数据集"""
     image_files = []
     xml_files = {}
 
-    # 查找所有图片
     for ext in ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.JPG', '*.JPEG', '*.PNG']:
         for img_path in source.rglob(ext):
             image_files.append(img_path)
 
-    # 查找所有 XML 标注
     for xml_path in source.rglob('*.xml'):
         stem = xml_path.stem
         xml_files[stem] = xml_path
@@ -215,7 +417,6 @@ def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
     print(f'  找到 {len(image_files)} 张图片')
     print(f'  找到 {len(xml_files)} 个标注文件')
 
-    # 匹配图片与标注
     matched_pairs = []
     for img_path in image_files:
         stem = img_path.stem
@@ -229,7 +430,6 @@ def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
         print('  请确保图片和 XML 标注文件名称一致')
         return
 
-    # 随机打乱并划分数据集
     random.seed(42)
     random.shuffle(matched_pairs)
 
@@ -248,7 +448,6 @@ def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
     for split_name, pairs in splits.items():
         print(f'\n  处理 {split_name} 集 ({len(pairs)} 张) ...')
         for img_path, xml_path in pairs:
-            # 获取图片尺寸
             try:
                 from PIL import Image
                 with Image.open(img_path) as im:
@@ -261,26 +460,26 @@ def convert_dataset(source_dir, train_ratio=0.8, val_ratio=0.1):
                 print(f'  警告: 无法读取图片 {img_path}: {e}，跳过')
                 continue
 
-            # 转换标注
             yolo_lines = convert_voc_to_yolo(xml_path, img_w, img_h)
             if not yolo_lines:
                 continue
 
-            # 复制图片
             dst_img = DATASET_DIR / 'images' / split_name / img_path.name
             shutil.copy2(img_path, dst_img)
 
-            # 写入标注
             dst_label = DATASET_DIR / 'labels' / split_name / (img_path.stem + '.txt')
             with open(dst_label, 'w') as f:
                 f.write('\n'.join(yolo_lines) + '\n')
 
-            # 统计类别
             for line in yolo_lines:
                 class_id = int(line.split()[0])
                 stats[PLANTDOC_CLASSES[class_id]] += 1
 
-    # 输出统计信息
+    _print_conversion_stats(splits, stats)
+
+
+def _print_conversion_stats(splits, stats):
+    """输出数据集转换统计信息"""
     print('\n' + '=' * 50)
     print('  数据集转换完成!')
     print('=' * 50)
@@ -363,47 +562,87 @@ def validate_dataset():
 
 
 def download_dataset():
-    """使用 kaggle CLI 下载 PlantDoc 数据集"""
+    """从 DatasetNinja GitHub Releases 下载 PlantDoc 数据集"""
+    import subprocess
+    import urllib.request
+    import zipfile
+
+    print('正在从 DatasetNinja GitHub Releases 下载 PlantDoc 数据集...\n')
+
+    download_dir = ROOT / 'datasets' / 'plantdoc_raw'
+    download_dir.mkdir(parents=True, exist_ok=True)
+
+    release_url = 'https://github.com/dataset-ninja/PlantDoc/releases'
+
     try:
-        import subprocess
-        print('正在使用 Kaggle CLI 下载 PlantDoc 数据集...')
-        print('  请确保已配置 ~/.kaggle/kaggle.json\n')
+        # 查询最新 release 信息
+        api_url = 'https://api.github.com/repos/dataset-ninja/PlantDoc/releases/latest'
+        print(f'  查询最新版本: {api_url}')
 
-        download_dir = ROOT / 'datasets' / 'plantdoc_raw'
-        download_dir.mkdir(parents=True, exist_ok=True)
+        req = urllib.request.Request(
+            api_url, headers={'Accept': 'application/vnd.github+json'})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            release_info = json.loads(resp.read().decode())
 
-        cmd = [
-            'kaggle', 'datasets', 'download',
-            '-d', 'mrigaankbhatt/plantdoc-dataset',
-            '-p', str(download_dir),
-            '--unzip',
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        assets = release_info.get('assets', [])
+        tarball_url = release_info.get('tarball_url', '')
 
-        if result.returncode != 0:
-            print(f'  下载失败: {result.stderr}')
-            print('\n  手动下载步骤:')
-            print('  1. 访问 https://www.kaggle.com/datasets/mrigaankbhatt/plantdoc-dataset')
-            print('  2. 下载并解压到 datasets/plantdoc_raw/')
-            print('  3. 运行: python yolo/prepare_plantdoc.py --source datasets/plantdoc_raw')
-            sys.exit(1)
+        # 优先下载 release assets（如果有 zip/tar 文件）
+        download_url = None
+        archive_path = None
+        for asset in assets:
+            name = asset.get('name', '')
+            if name.endswith(('.zip', '.tar', '.tar.gz')):
+                download_url = asset['browser_download_url']
+                archive_path = download_dir / name
+                break
 
-        print(f'  下载完成: {download_dir}')
-        return str(download_dir)
+        if not download_url and tarball_url:
+            download_url = tarball_url
+            archive_path = download_dir / 'PlantDoc.tar.gz'
 
-    except FileNotFoundError:
-        print('错误: 未找到 kaggle 命令')
-        print('  请先安装: pip install kaggle')
-        print('  并配置 API Key: https://www.kaggle.com/docs/api')
-        sys.exit(1)
+        if download_url and archive_path:
+            print(f'  下载地址: {download_url}')
+            urllib.request.urlretrieve(download_url, str(archive_path))
+
+            if not archive_path.exists():
+                raise RuntimeError(f'下载后文件不存在: {archive_path}')
+
+            print(f'  下载完成: {archive_path}')
+
+            # 解压
+            if str(archive_path).endswith('.zip'):
+                with zipfile.ZipFile(archive_path, 'r') as zf:
+                    zf.extractall(download_dir)
+            else:
+                result = subprocess.run(
+                    ['tar', 'xf', str(archive_path), '-C', str(download_dir)],
+                    capture_output=True, text=True,
+                )
+                if result.returncode != 0:
+                    raise RuntimeError(f'解压失败: {result.stderr}')
+
+            print(f'  解压完成: {download_dir}')
+            return str(download_dir)
+
+    except Exception as e:
+        print(f'  自动下载失败: {e}')
+
+    print('\n  自动下载未成功，请手动下载:')
+    print(f'  1. 访问 {release_url}')
+    print('     或 https://datasetninja.com/plantdoc')
+    print(f'  2. 下载并解压到 {download_dir}/')
+    print(f'  3. 运行: python yolo/prepare_plantdoc.py --source {download_dir}')
+    sys.exit(1)
 
 
 def print_dataset_summary():
     """打印数据集摘要信息"""
     print('\n' + '=' * 60)
-    print('  PlantDoc 数据集信息')
+    print('  PlantDoc 数据集信息 (DatasetNinja)')
     print('=' * 60)
     print(f'  类别数: {len(PLANTDOC_CLASSES)}')
+    print(f'  来源: https://datasetninja.com/plantdoc')
     print(f'  目录: {DATASET_DIR}')
     print('\n  类别列表:')
     for i, name in enumerate(PLANTDOC_CLASSES):
@@ -414,7 +653,8 @@ def print_dataset_summary():
 def parse_args():
     parser = argparse.ArgumentParser(description='PlantDoc 数据集准备工具')
     parser.add_argument('--source', type=str, help='PlantDoc 原始数据集目录路径')
-    parser.add_argument('--download', action='store_true', help='使用 Kaggle CLI 下载数据集')
+    parser.add_argument('--download', action='store_true',
+                        help='从 DatasetNinja GitHub Releases 下载数据集')
     parser.add_argument('--validate', action='store_true', help='验证现有数据集')
     parser.add_argument('--train-ratio', type=float, default=0.8, help='训练集比例')
     parser.add_argument('--val-ratio', type=float, default=0.1, help='验证集比例')
@@ -445,7 +685,7 @@ def main():
         return
 
     # 默认：显示帮助
-    print('PlantDoc 数据集准备工具')
+    print('PlantDoc 数据集准备工具 (DatasetNinja)')
     print()
     print('用法:')
     print('  python yolo/prepare_plantdoc.py --source /path/to/plantdoc_raw')
