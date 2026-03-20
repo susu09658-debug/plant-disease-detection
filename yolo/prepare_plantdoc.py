@@ -22,6 +22,7 @@ PlantDoc 数据集来源:
 """
 
 import argparse
+import hashlib
 import json
 import random
 import shutil
@@ -32,6 +33,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DATASET_DIR = ROOT / 'datasets' / 'plant_disease'
+
+# Windows MAX_PATH 安全阈值：路径总长超过此值时截断文件名
+# Windows 默认 MAX_PATH = 260，留 20 字符余量
+_MAX_SAFE_PATH = 240
 
 # PlantDoc 类别定义（30 个类别，与 data.yaml 保持一致）
 PLANTDOC_CLASSES = [
@@ -139,6 +144,42 @@ def get_class_id(class_name):
     if normalized in PLANTDOC_CLASSES:
         return PLANTDOC_CLASSES.index(normalized)
     return -1
+
+
+def _safe_copy_image(img_path, dst_dir):
+    """
+    将图片复制到目标目录，处理 Windows MAX_PATH (260 字符) 限制。
+
+    DatasetNinja 数据集中图片文件名可能非常长（来源于网络爬取的 URL 路径），
+    当目标路径总长超过 Windows MAX_PATH (260) 时，_winapi.CopyFile2 会以
+    FileNotFoundError: [WinError 3] 失败。本函数在必要时截断文件名并附加
+    8 位 MD5 哈希后缀以确保唯一性，同时保留原始扩展名。
+
+    Args:
+        img_path: 原始图片路径（Path 对象）
+        dst_dir:  目标目录路径（Path 对象，必须已存在）
+
+    Returns:
+        Path: 实际写入的目标文件路径；复制失败时返回 None
+    """
+    suffix = img_path.suffix
+    dst_img = dst_dir / img_path.name
+
+    # 路径超过安全阈值时截断文件名（主要针对 Windows MAX_PATH 限制）
+    if len(str(dst_img)) > _MAX_SAFE_PATH:
+        name_hash = hashlib.md5(img_path.name.encode()).hexdigest()[:8]
+        # 可分配给主干的字符数：总阈值 - 目录长度 - 分隔符 - 扩展名 - '_hash'
+        available_stem = _MAX_SAFE_PATH - len(str(dst_dir)) - 1 - len(suffix) - 9
+        truncated_stem = img_path.stem[:max(available_stem, 16)]
+        dst_img = dst_dir / f'{truncated_stem}_{name_hash}{suffix}'
+
+    dst_img.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.copy2(img_path, dst_img)
+    except (OSError, shutil.Error) as e:
+        print(f'  警告: 复制图片失败 {img_path.name}: {e}，跳过')
+        return None
+    return dst_img
 
 
 def convert_voc_to_yolo(xml_path, img_width, img_height):
@@ -312,9 +353,10 @@ def _collect_supervisely_pairs(source):
             └── ann/
 
     Returns:
-        list: [(img_path, ann_path), ...] 图片-标注对列表
+        list: [(img_path, ann_path), ...] 图片-标注对列表（已去重）
     """
     pairs = []
+    seen = set()
     for subdir in sorted(source.iterdir()):
         if not subdir.is_dir():
             continue
@@ -324,6 +366,11 @@ def _collect_supervisely_pairs(source):
             continue
         for ext in ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.JPG', '*.JPEG', '*.PNG']:
             for img_path in img_dir.glob(ext):
+                # 用 resolve() 规范化路径，避免在 Windows 大小写不敏感文件系统上重复收集
+                img_key = img_path.resolve()
+                if img_key in seen:
+                    continue
+                seen.add(img_key)
                 # Supervisely JSON: 原图文件名.json (e.g. img.jpg -> img.jpg.json)
                 # 也兼容 stem.json 格式 (e.g. img.jpg -> img.json)
                 ann_path = ann_dir / (img_path.name + '.json')
@@ -404,19 +451,29 @@ def _collect_split_pairs(split_dir):
     """
     收集单个划分目录（如 train/ 或 test/）中的图片-标注对。
 
+    在 Windows 大小写不敏感的文件系统上，同时匹配 *.jpg 和 *.JPG 等模式
+    会返回同一文件的重复路径。此函数通过 resolve() 规范化路径去重，
+    确保每张图片只被收集一次。
+
     Args:
         split_dir: 包含 img/ 和 ann/ 的目录
 
     Returns:
-        list: [(img_path, ann_path), ...] 图片-标注对列表
+        list: [(img_path, ann_path), ...] 图片-标注对列表（已去重）
     """
     pairs = []
+    seen = set()
     img_dir = split_dir / 'img'
     ann_dir = split_dir / 'ann'
     if not img_dir.is_dir() or not ann_dir.is_dir():
         return pairs
     for ext in ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.JPG', '*.JPEG', '*.PNG']:
         for img_path in img_dir.glob(ext):
+            # 用 resolve() 规范化路径，避免在 Windows 大小写不敏感文件系统上重复收集
+            img_key = img_path.resolve()
+            if img_key in seen:
+                continue
+            seen.add(img_key)
             ann_path = ann_dir / (img_path.name + '.json')
             if not ann_path.exists():
                 ann_path = ann_dir / (img_path.stem + '.json')
@@ -469,12 +526,13 @@ def _convert_supervisely_presplit(source, val_ratio=0.1):
             if not yolo_lines:
                 continue
 
-            # 复制图片
-            dst_img = DATASET_DIR / 'images' / split_name / img_path.name
-            shutil.copy2(img_path, dst_img)
+            # 复制图片（自动处理长文件名导致的 Windows MAX_PATH 限制）
+            dst_img = _safe_copy_image(img_path, DATASET_DIR / 'images' / split_name)
+            if dst_img is None:
+                continue
 
-            # 写入标注
-            dst_label = DATASET_DIR / 'labels' / split_name / (img_path.stem + '.txt')
+            # 写入标注（使用实际写入的目标文件主干，与可能被截断的文件名保持一致）
+            dst_label = DATASET_DIR / 'labels' / split_name / (dst_img.stem + '.txt')
             with open(dst_label, 'w') as f:
                 f.write('\n'.join(yolo_lines) + '\n')
 
@@ -518,12 +576,13 @@ def _convert_supervisely(source, train_ratio, val_ratio):
             if not yolo_lines:
                 continue
 
-            # 复制图片
-            dst_img = DATASET_DIR / 'images' / split_name / img_path.name
-            shutil.copy2(img_path, dst_img)
+            # 复制图片（自动处理长文件名导致的 Windows MAX_PATH 限制）
+            dst_img = _safe_copy_image(img_path, DATASET_DIR / 'images' / split_name)
+            if dst_img is None:
+                continue
 
-            # 写入标注
-            dst_label = DATASET_DIR / 'labels' / split_name / (img_path.stem + '.txt')
+            # 写入标注（使用实际写入的目标文件主干，与可能被截断的文件名保持一致）
+            dst_label = DATASET_DIR / 'labels' / split_name / (dst_img.stem + '.txt')
             with open(dst_label, 'w') as f:
                 f.write('\n'.join(yolo_lines) + '\n')
 
@@ -597,10 +656,11 @@ def _convert_voc(source, train_ratio, val_ratio):
             if not yolo_lines:
                 continue
 
-            dst_img = DATASET_DIR / 'images' / split_name / img_path.name
-            shutil.copy2(img_path, dst_img)
+            dst_img = _safe_copy_image(img_path, DATASET_DIR / 'images' / split_name)
+            if dst_img is None:
+                continue
 
-            dst_label = DATASET_DIR / 'labels' / split_name / (img_path.stem + '.txt')
+            dst_label = DATASET_DIR / 'labels' / split_name / (dst_img.stem + '.txt')
             with open(dst_label, 'w') as f:
                 f.write('\n'.join(yolo_lines) + '\n')
 
