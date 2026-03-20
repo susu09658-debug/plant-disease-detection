@@ -109,6 +109,11 @@ CLASS_ALIASES = {
 }
 
 
+# 预构建小写查找表，用于大小写不敏感的回退匹配
+_LOWERCASE_ALIASES = {k.lower(): v for k, v in CLASS_ALIASES.items()}
+_LOWERCASE_CLASSES = {c.lower(): c for c in PLANTDOC_CLASSES}
+
+
 def normalize_class_name(name):
     """标准化类名，处理空格、下划线和大小写不一致的情况"""
     name = name.strip()
@@ -120,13 +125,11 @@ def normalize_class_name(name):
         return normalized
     # 大小写不敏感的回退匹配
     name_lower = name.lower()
-    for alias, target in CLASS_ALIASES.items():
-        if alias.lower() == name_lower:
-            return target
+    if name_lower in _LOWERCASE_ALIASES:
+        return _LOWERCASE_ALIASES[name_lower]
     normalized_lower = normalized.lower()
-    for cls in PLANTDOC_CLASSES:
-        if cls.lower() == normalized_lower:
-            return cls
+    if normalized_lower in _LOWERCASE_CLASSES:
+        return _LOWERCASE_CLASSES[normalized_lower]
     return name
 
 
