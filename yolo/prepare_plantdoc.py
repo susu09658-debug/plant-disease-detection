@@ -83,7 +83,9 @@ CLASS_ALIASES = {
     'Corn rust leaf': 'Corn_rust_leaf',
     'Grape Leaf black rot': 'Grape_leaf_black_rot',
     'Grape leaf black rot': 'Grape_leaf_black_rot',
+    'grape leaf black rot': 'Grape_leaf_black_rot',
     'Grape leaf': 'Grape_leaf',
+    'grape leaf': 'Grape_leaf',
     'Grape leaf blight': 'Grape_leaf_blight',
     'Peach leaf': 'Peach_leaf',
     'Potato leaf': 'Potato_leaf',
@@ -107,8 +109,13 @@ CLASS_ALIASES = {
 }
 
 
+# 预构建小写查找表，用于大小写不敏感的回退匹配
+_LOWERCASE_ALIASES = {k.lower(): v for k, v in CLASS_ALIASES.items()}
+_LOWERCASE_CLASSES = {c.lower(): c for c in PLANTDOC_CLASSES}
+
+
 def normalize_class_name(name):
-    """标准化类名，处理空格和下划线不一致的情况"""
+    """标准化类名，处理空格、下划线和大小写不一致的情况"""
     name = name.strip()
     if name in CLASS_ALIASES:
         return CLASS_ALIASES[name]
@@ -116,6 +123,13 @@ def normalize_class_name(name):
     normalized = name.replace(' ', '_')
     if normalized in PLANTDOC_CLASSES:
         return normalized
+    # 大小写不敏感的回退匹配
+    name_lower = name.lower()
+    if name_lower in _LOWERCASE_ALIASES:
+        return _LOWERCASE_ALIASES[name_lower]
+    normalized_lower = normalized.lower()
+    if normalized_lower in _LOWERCASE_CLASSES:
+        return _LOWERCASE_CLASSES[normalized_lower]
     return name
 
 
