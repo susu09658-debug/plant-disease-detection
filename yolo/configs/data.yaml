@@ -19,8 +19,8 @@ train: images/train
 val: images/val
 test: images/test
 
-# 类别数 (PlantDoc 数据集包含 30 个类别)
-nc: 30
+# 类别数 (PlantDoc 数据集包含 29 个类别)
+nc: 29
 
 # 类别名称 (DatasetNinja PlantDoc 数据集类别定义)
 names:
@@ -36,24 +36,23 @@ names:
   9: Corn_rust_leaf
   10: Grape_leaf
   11: Grape_leaf_black_rot
-  12: Grape_leaf_blight
-  13: Peach_leaf
-  14: Potato_leaf
-  15: Potato_leaf_early_blight
-  16: Potato_leaf_late_blight
-  17: Raspberry_leaf
-  18: Soybean_leaf
-  19: Squash_Powdery_mildew_leaf
-  20: Strawberry_leaf
-  21: Tomato_Early_blight_leaf
-  22: Tomato_Septoria_leaf_spot
-  23: Tomato_leaf
-  24: Tomato_leaf_bacterial_spot
-  25: Tomato_leaf_late_blight
-  26: Tomato_leaf_mosaic_virus
-  27: Tomato_leaf_yellow_virus
-  28: Tomato_mold_leaf
-  29: Tomato_two_spotted_spider_mites_leaf
+  12: Peach_leaf
+  13: Potato_leaf
+  14: Potato_leaf_early_blight
+  15: Potato_leaf_late_blight
+  16: Raspberry_leaf
+  17: Soybean_leaf
+  18: Squash_Powdery_mildew_leaf
+  19: Strawberry_leaf
+  20: Tomato_Early_blight_leaf
+  21: Tomato_Septoria_leaf_spot
+  22: Tomato_leaf
+  23: Tomato_leaf_bacterial_spot
+  24: Tomato_leaf_late_blight
+  25: Tomato_leaf_mosaic_virus
+  26: Tomato_leaf_yellow_virus
+  27: Tomato_mold_leaf
+  28: Tomato_two_spotted_spider_mites_leaf
 
 # 中英文类别映射 (供系统展示使用)
 names_cn:
@@ -69,21 +68,20 @@ names_cn:
   9: 玉米锈病叶
   10: 葡萄健康叶
   11: 葡萄黑腐病叶
-  12: 葡萄叶枯病
-  13: 桃树健康叶
-  14: 马铃薯健康叶
-  15: 马铃薯早疫病叶
-  16: 马铃薯晚疫病叶
-  17: 覆盆子健康叶
-  18: 大豆健康叶
-  19: 南瓜白粉病叶
-  20: 草莓健康叶
-  21: 番茄早疫病叶
-  22: 番茄叶斑病
-  23: 番茄健康叶
-  24: 番茄细菌性斑点病叶
-  25: 番茄晚疫病叶
-  26: 番茄花叶病毒叶
-  27: 番茄黄化曲叶病毒叶
-  28: 番茄霉病叶
-  29: 番茄二斑叶螨叶
+  12: 桃树健康叶
+  13: 马铃薯健康叶
+  14: 马铃薯早疫病叶
+  15: 马铃薯晚疫病叶
+  16: 覆盆子健康叶
+  17: 大豆健康叶
+  18: 南瓜白粉病叶
+  19: 草莓健康叶
+  20: 番茄早疫病叶
+  21: 番茄斑枯病叶
+  22: 番茄健康叶
+  23: 番茄细菌性斑点病叶
+  24: 番茄晚疫病叶
+  25: 番茄花叶病毒叶
+  26: 番茄黄化病毒叶
+  27: 番茄霉病叶
+  28: 番茄二斑叶螨叶
