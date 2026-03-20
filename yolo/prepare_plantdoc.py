@@ -83,7 +83,9 @@ CLASS_ALIASES = {
     'Corn rust leaf': 'Corn_rust_leaf',
     'Grape Leaf black rot': 'Grape_leaf_black_rot',
     'Grape leaf black rot': 'Grape_leaf_black_rot',
+    'grape leaf black rot': 'Grape_leaf_black_rot',
     'Grape leaf': 'Grape_leaf',
+    'grape leaf': 'Grape_leaf',
     'Grape leaf blight': 'Grape_leaf_blight',
     'Peach leaf': 'Peach_leaf',
     'Potato leaf': 'Potato_leaf',
@@ -108,7 +110,7 @@ CLASS_ALIASES = {
 
 
 def normalize_class_name(name):
-    """标准化类名，处理空格和下划线不一致的情况"""
+    """标准化类名，处理空格、下划线和大小写不一致的情况"""
     name = name.strip()
     if name in CLASS_ALIASES:
         return CLASS_ALIASES[name]
@@ -116,6 +118,15 @@ def normalize_class_name(name):
     normalized = name.replace(' ', '_')
     if normalized in PLANTDOC_CLASSES:
         return normalized
+    # 大小写不敏感的回退匹配
+    name_lower = name.lower()
+    for alias, target in CLASS_ALIASES.items():
+        if alias.lower() == name_lower:
+            return target
+    normalized_lower = normalized.lower()
+    for cls in PLANTDOC_CLASSES:
+        if cls.lower() == normalized_lower:
+            return cls
     return name
 
 
