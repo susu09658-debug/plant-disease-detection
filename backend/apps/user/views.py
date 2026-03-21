@@ -182,28 +182,38 @@ class AvatarUploadView(APIView):
     """头像上传接口"""
     authentication_classes = [JWTAuthentication]
 
+    CONTENT_TYPE_EXT = {
+        'image/jpeg': '.jpg',
+        'image/png': '.png',
+        'image/gif': '.gif',
+    }
+
     def post(self, request):
         avatar_file = request.FILES.get('avatar')
         if not avatar_file:
             return Response({"code": 400, "msg": "请选择头像文件"})
 
-        allowed_types = ['image/jpeg', 'image/png', 'image/gif']
-        if avatar_file.content_type not in allowed_types:
+        if avatar_file.content_type not in self.CONTENT_TYPE_EXT:
             return Response({"code": 400, "msg": "仅支持 JPG、PNG、GIF 格式"})
 
         max_size = 2 * 1024 * 1024
         if avatar_file.size > max_size:
             return Response({"code": 400, "msg": "头像文件大小不能超过 2MB"})
 
-        ext = os.path.splitext(avatar_file.name)[1].lower() or '.jpg'
+        ext = self.CONTENT_TYPE_EXT[avatar_file.content_type]
         filename = f"{request.user.id}_avatar{ext}"
         avatar_dir = os.path.join(settings.MEDIA_ROOT, 'avatars')
         os.makedirs(avatar_dir, exist_ok=True)
         avatar_path = os.path.join(avatar_dir, filename)
 
-        with open(avatar_path, 'wb') as f:
-            for chunk in avatar_file.chunks():
-                f.write(chunk)
+        try:
+            with open(avatar_path, 'wb') as f:
+                for chunk in avatar_file.chunks():
+                    f.write(chunk)
+        except OSError:
+            if os.path.exists(avatar_path):
+                os.remove(avatar_path)
+            return Response({"code": 500, "msg": "头像保存失败，请重试"})
 
         avatar_url = f"{settings.MEDIA_URL}avatars/{filename}"
         request.user.avatar = avatar_url

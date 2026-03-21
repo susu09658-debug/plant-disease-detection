@@ -110,7 +110,6 @@ const uploadingAvatar = ref(false);
 const avatarSrc = computed(() => {
     const avatar = userInfo.value?.avatar;
     if (!avatar) return '';
-    if (avatar.startsWith('http')) return avatar;
     return avatar;
 });
 
