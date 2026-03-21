@@ -46,7 +46,7 @@
           <el-tag type="primary">{{ overview.dataset_name || 'PlantDoc' }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="数据来源">{{ overview.dataset_source || 'DatasetNinja' }}</el-descriptions-item>
-        <el-descriptions-item label="类别数量">{{ overview.num_classes || 30 }} 类</el-descriptions-item>
+        <el-descriptions-item label="类别数量">{{ overview.num_classes || 29 }} 类</el-descriptions-item>
         <el-descriptions-item label="数据集路径">
           <el-text size="small" type="info">{{ overview.dataset_path || '-' }}</el-text>
         </el-descriptions-item>
@@ -137,7 +137,7 @@
         <p>准备完成后运行验证：<el-text tag="code">python yolo/prepare_plantdoc.py --validate</el-text></p>
 
         <h4>PlantDoc 数据集说明</h4>
-        <p>PlantDoc 是一个包含 30 类植物叶片病害的目标检测数据集，涵盖苹果、甜椒、蓝莓、樱桃、玉米、葡萄、桃树、马铃薯、覆盆子、大豆、南瓜、草莓和番茄等 13 种植物的健康与病害样本，适合用于植物病害目标检测模型的训练与评估。</p>
+        <p>PlantDoc 是一个包含 29 类植物叶片病害的目标检测数据集，涵盖苹果、甜椒、蓝莓、樱桃、玉米、葡萄、桃树、马铃薯、覆盆子、大豆、南瓜、草莓和番茄等 13 种植物的健康与病害样本，适合用于植物病害目标检测模型的训练与评估。</p>
       </div>
     </el-card>
   </div>

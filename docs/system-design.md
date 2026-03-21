@@ -43,7 +43,7 @@
 | 认证方式  | JWT（PyJWT 2.12.1）                          |
 | 密码加密  | Django PBKDF2（make_password/check_password）|
 | AI 模型   | YOLOv11（ultralytics）                       |
-| 训练数据集| PlantDoc（DatasetNinja, 30 类植物病害）            |
+| 训练数据集| PlantDoc（DatasetNinja, 29 类植物病害）            |
 | 数据库    | MySQL 8.0                                   |
 | 缓存      | Django LocMemCache（验证码存储）             |
 | 跨域      | django-cors-headers                         |
@@ -55,7 +55,7 @@
 
 | 模块        | 路由前缀           | 说明                           |
 |-------------|--------------------|---------------------------------|
-| 用户模块    | /api/user/         | 注册、登录、忘记密码、个人信息、密码管理 |
+| 用户模块    | /api/user/         | 注册、登录、忘记密码、个人信息、头像上传、密码管理 |
 | 检测模块    | /api/detect/       | 图片上传、YOLO推理、历史记录    |
 | 知识库模块  | /api/knowledge/    | 病害知识浏览与管理              |
 | 实验结果模块| /api/experiment/   | 模型指标、训练曲线、训练历史、训练配置 |
@@ -116,7 +116,7 @@
 - 正常情况：加载 `model/best.pt`，调用 YOLOv11 推理
 - 模型文件不存在时：返回随机模拟数据（便于开发调试，不影响系统其他功能运行）
 - 推理出错时：捕获异常并降级返回模拟数据
-- 类名映射：英文类名自动映射为中文名称（与 `yolo/configs/data.yaml` PlantDoc 30 类一致）
+- 类名映射：英文类名自动映射为中文名称（与 `yolo/configs/data.yaml` PlantDoc 29 类一致）
 
 ## 六、YOLO 模型训练与评估
 
@@ -130,8 +130,12 @@ yolo/                           # 训练与评估脚本
 ├── export_model.py             # 模型格式导出
 ├── prepare_plantdoc.py         # PlantDoc 数据集准备脚本
 └── configs/
-    ├── data.yaml               # PlantDoc 数据集配置（30 类）
-    └── train_config.yaml       # YOLOv11 训练超参数参考
+    ├── data.yaml               # PlantDoc 数据集配置（29 类）
+    ├── train_config.yaml       # YOLOv11 训练超参数参考
+    ├── strategy_baseline.yaml      # 基线训练策略
+    ├── strategy_augment.yaml       # 数据增强策略
+    ├── strategy_finetune.yaml      # 微调训练策略
+    └── strategy_lightweight.yaml   # 轻量化部署策略
 
 datasets/                       # 数据集存放
 └── plant_disease/

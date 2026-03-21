@@ -101,10 +101,33 @@
 
 请求体：
 ```json
-{"phone": "13900139000", "email": "user@example.com"}
+{"phone": "13900139000", "email": "user@example.com", "username": "new_username"}
 ```
 
-### 1.7 修改密码
+> 支持修改用户名（需唯一）、手机号、邮箱。
+
+### 1.7 上传头像
+
+- **POST** `/api/user/avatar/`
+- 认证：Bearer Token
+- Content-Type: multipart/form-data
+
+| 参数   | 类型 | 必填 | 说明                       |
+|--------|------|------|----------------------------|
+| avatar | File | 是   | JPG/PNG/GIF，最大 2MB      |
+
+响应：
+```json
+{
+  "code": 200,
+  "msg": "头像上传成功",
+  "data": {
+    "avatar": "/media/avatars/1_avatar.jpg"
+  }
+}
+```
+
+### 1.8 修改密码
 
 - **PUT** `/api/user/password/`
 - 认证：Bearer Token
@@ -113,7 +136,7 @@
 {"old_password": "OldPass123", "new_password": "NewPass456"}
 ```
 
-### 1.8 忘记密码（重置密码）
+### 1.9 忘记密码（重置密码）
 
 - **POST** `/api/user/reset-password/`
 - 认证：无
@@ -324,7 +347,7 @@
     },
     "class_names": { "0": "Apple_Scab_Leaf", "1": "Apple_leaf" },
     "class_names_cn": { "0": "苹果黑星病叶", "1": "苹果健康叶" },
-    "num_classes": 30,
+    "num_classes": 29,
     "charts": { "results": "results.png", "confusion_matrix": "confusion_matrix.png" },
     "run_name": "plant_disease"
   }
@@ -371,7 +394,7 @@
     "model_loaded": true,
     "model_path": "/path/to/model/best.pt",
     "model_version": "yolo11n.pt",
-    "num_classes": 30,
+    "num_classes": 29,
     "class_names": { "0": "Apple_Scab_Leaf" },
     "class_names_cn": { "0": "苹果黑星病叶" },
     "input_size": 640,
@@ -437,8 +460,14 @@
       { "name": "yolo11n.pt", "params": "2.6M", "desc": "超轻量 - 适合快速实验" },
       { "name": "yolo11s.pt", "params": "9.4M", "desc": "轻量 - 平衡精度与速度" }
     ],
-    "num_classes": 30,
-    "optimizer_options": ["SGD", "Adam", "AdamW"]
+    "num_classes": 29,
+    "optimizer_options": ["SGD", "Adam", "AdamW"],
+    "strategy_options": [
+      { "key": "baseline", "name": "基线策略", "desc": "标准训练参数，适合作为对照基准" },
+      { "key": "augment", "name": "数据增强策略", "desc": "强化数据增强，提升小样本类别效果" },
+      { "key": "finetune", "name": "微调策略", "desc": "大模型 + AdamW + 余弦退火学习率" },
+      { "key": "lightweight", "name": "轻量化策略", "desc": "轻量化部署，适合边缘设备" }
+    ]
   }
 }
 ```
@@ -462,7 +491,7 @@
     "dataset_exists": true,
     "dataset_name": "PlantDoc",
     "dataset_source": "DatasetNinja (datasetninja.com/plantdoc)",
-    "num_classes": 30,
+    "num_classes": 29,
     "total_images": 2598,
     "total_labels": 2598,
     "splits": {

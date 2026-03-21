@@ -12,7 +12,7 @@
 | 后端      | Django 6.0.3 + Django REST Framework 3.16.1      |
 | 认证      | JWT（PyJWT 2.12.1）                               |
 | AI 模型   | YOLOv11（ultralytics）                            |
-| 数据集    | PlantDoc（DatasetNinja, 30 类植物病害）             |
+| 数据集    | PlantDoc（DatasetNinja, 29 类植物病害）             |
 | 数据库    | MySQL 8.0                                       |
 | 跨域      | django-cors-headers 4.9.0                        |
 
@@ -26,9 +26,9 @@
 - **历史记录**：分页列表，支持搜索、单条/批量删除，查看详情
 - **知识库**：病害知识卡片展示，支持按植物/病害名搜索，点击查看详情
 - **数据集管理**（新增）：PlantDoc 数据集概览、类别分布、划分统计、数据集准备指南
-- **模型训练管理**（新增）：训练配置参考、YOLOv11 模型选项、历史训练记录、论文实验设计建议
+- **模型训练管理**（新增）：训练配置参考、YOLOv11 模型选项、多种训练策略（基线/增强/微调/轻量化）、历史训练记录、论文实验设计建议
 - **实验结果**：展示模型训练曲线（损失/mAP/Precision/Recall）、评估指标、各类别 AP、实验设计说明
-- **个人中心**：查看/修改个人信息、修改密码
+- **个人中心**：查看/修改个人信息、自定义头像上传、修改用户名、修改密码
 - **管理后台**（管理员专属）：用户管理、知识库管理、数据集管理、模型训练管理（基于权限类控制）
 - **管理员创建**：通过 `python manage.py create_admin` 命令行创建管理员用户
 
@@ -72,8 +72,12 @@ plant-disease-detection/
 │   ├── export_model.py      # 模型导出
 │   ├── prepare_plantdoc.py  # PlantDoc 数据集准备脚本（新增）
 │   └── configs/             # 数据集与训练配置
-│       ├── data.yaml        # PlantDoc 30 类数据集配置
-│       └── train_config.yaml # YOLOv11 训练超参数
+│       ├── data.yaml              # PlantDoc 29 类数据集配置
+│       ├── train_config.yaml     # YOLOv11 训练超参数
+│       ├── strategy_baseline.yaml    # 基线训练策略
+│       ├── strategy_augment.yaml     # 数据增强策略
+│       ├── strategy_finetune.yaml    # 微调训练策略
+│       └── strategy_lightweight.yaml # 轻量化部署策略
 ├── datasets/                # 数据集存放目录
 │   └── plant_disease/       # YOLO 格式数据集
 ├── model/                   # 部署用权重文件（best.pt）
@@ -159,6 +163,12 @@ python yolo/train.py
 # 使用更大模型
 python yolo/train.py --model yolo11s.pt --epochs 150
 
+# 使用预定义训练策略（适合毕业论文对比实验）
+python yolo/train.py --strategy baseline      # 基线策略
+python yolo/train.py --strategy augment       # 增强数据增强策略
+python yolo/train.py --strategy finetune      # 大模型微调策略
+python yolo/train.py --strategy lightweight   # 轻量化部署策略
+
 # 评估模型
 python yolo/evaluate.py --split test --save-json
 
@@ -170,7 +180,7 @@ cp runs/train/plant_disease/weights/best.pt model/best.pt
 
 ## 六、PlantDoc 数据集
 
-本项目使用 DatasetNinja 上的 **PlantDoc** 数据集，包含 30 个类别：
+本项目使用 DatasetNinja 上的 **PlantDoc** 数据集，包含 29 个类别：
 
 | 植物 | 病害类别 |
 |------|---------|
@@ -179,7 +189,7 @@ cp runs/train/plant_disease/weights/best.pt model/best.pt
 | 蓝莓 | 健康叶 |
 | 樱桃 | 健康叶 |
 | 玉米 | 灰斑病、叶枯病、锈病叶 |
-| 葡萄 | 黑腐病叶、健康叶、叶枯病 |
+| 葡萄 | 黑腐病叶、健康叶 |
 | 桃树 | 健康叶 |
 | 马铃薯 | 健康叶、早疫病叶、晚疫病叶 |
 | 覆盆子 | 健康叶 |

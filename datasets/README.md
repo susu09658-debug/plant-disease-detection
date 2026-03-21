@@ -5,7 +5,7 @@
 本项目使用 DatasetNinja 上的 **PlantDoc** 数据集进行模型训练和评估。
 
 - 下载地址：https://datasetninja.com/plantdoc
-- 包含 13 种植物的 30 个类别（病害+健康）
+- 包含 13 种植物的 29 个类别（病害+健康）
 
 ## 目录结构
 
@@ -40,7 +40,7 @@ datasets/
 7 0.321 0.450 0.150 0.200
 ```
 
-## PlantDoc 类别定义 (30 类)
+## PlantDoc 类别定义 (29 类)
 
 | ID | 英文名 | 中文名 |
 |----|--------|--------|
@@ -56,24 +56,23 @@ datasets/
 | 9  | Corn_rust_leaf | 玉米锈病叶 |
 | 10 | Grape_leaf | 葡萄健康叶 |
 | 11 | Grape_leaf_black_rot | 葡萄黑腐病叶 |
-| 12 | Grape_leaf_blight | 葡萄叶枯病 |
-| 13 | Peach_leaf | 桃树健康叶 |
-| 14 | Potato_leaf | 马铃薯健康叶 |
-| 15 | Potato_leaf_early_blight | 马铃薯早疫病叶 |
-| 16 | Potato_leaf_late_blight | 马铃薯晚疫病叶 |
-| 17 | Raspberry_leaf | 覆盆子健康叶 |
-| 18 | Soybean_leaf | 大豆健康叶 |
-| 19 | Squash_Powdery_mildew_leaf | 南瓜白粉病叶 |
-| 20 | Strawberry_leaf | 草莓健康叶 |
-| 21 | Tomato_Early_blight_leaf | 番茄早疫病叶 |
-| 22 | Tomato_Septoria_leaf_spot | 番茄叶斑病 |
-| 23 | Tomato_leaf | 番茄健康叶 |
-| 24 | Tomato_leaf_bacterial_spot | 番茄细菌性斑点病叶 |
-| 25 | Tomato_leaf_late_blight | 番茄晚疫病叶 |
-| 26 | Tomato_leaf_mosaic_virus | 番茄花叶病毒叶 |
-| 27 | Tomato_leaf_yellow_virus | 番茄黄化曲叶病毒叶 |
-| 28 | Tomato_mold_leaf | 番茄霉病叶 |
-| 29 | Tomato_two_spotted_spider_mites_leaf | 番茄二斑叶螨叶 |
+| 12 | Peach_leaf | 桃树健康叶 |
+| 13 | Potato_leaf | 马铃薯健康叶 |
+| 14 | Potato_leaf_early_blight | 马铃薯早疫病叶 |
+| 15 | Potato_leaf_late_blight | 马铃薯晚疫病叶 |
+| 16 | Raspberry_leaf | 覆盆子健康叶 |
+| 17 | Soybean_leaf | 大豆健康叶 |
+| 18 | Squash_Powdery_mildew_leaf | 南瓜白粉病叶 |
+| 19 | Strawberry_leaf | 草莓健康叶 |
+| 20 | Tomato_Early_blight_leaf | 番茄早疫病叶 |
+| 21 | Tomato_Septoria_leaf_spot | 番茄斑枯病叶 |
+| 22 | Tomato_leaf | 番茄健康叶 |
+| 23 | Tomato_leaf_bacterial_spot | 番茄细菌性斑点病叶 |
+| 24 | Tomato_leaf_late_blight | 番茄晚疫病叶 |
+| 25 | Tomato_leaf_mosaic_virus | 番茄花叶病毒叶 |
+| 26 | Tomato_leaf_yellow_virus | 番茄黄化曲叶病毒叶 |
+| 27 | Tomato_mold_leaf | 番茄霉病叶 |
+| 28 | Tomato_two_spotted_spider_mites_leaf | 番茄二斑叶螨叶 |
 
 ## 数据集准备
 
