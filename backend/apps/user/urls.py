@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (
     CaptchaView, LoginView, RegisterView, LogoutView,
-    ProfileView, PasswordView, ResetPasswordView, AdminUserListView, AdminUserDetailView
+    ProfileView, PasswordView, ResetPasswordView, AdminUserListView, AdminUserDetailView,
+    AvatarUploadView
 )
 
 urlpatterns = [
@@ -10,6 +11,7 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),
     path('captcha/', CaptchaView.as_view(), name='captcha'),
     path('profile/', ProfileView.as_view(), name='profile'),
+    path('avatar/', AvatarUploadView.as_view(), name='avatar_upload'),
     path('password/', PasswordView.as_view(), name='password'),
     path('reset-password/', ResetPasswordView.as_view(), name='reset_password'),
     path('admin/users/', AdminUserListView.as_view(), name='admin_user_list'),

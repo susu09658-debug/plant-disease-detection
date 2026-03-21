@@ -5,7 +5,7 @@
 本系统是基于 YOLOv11 深度学习模型的植物病害智能检测平台，采用前后端分离架构（Vue 3 + Django），支持用户上传植物叶片图片，自动识别病害类型并给出检测结果。系统集成了数据集管理、模型训练、实验评估和知识库等功能，可服务于农业科研人员、植物保护工作者及相关专业学生。
 
 主要特性：
-- 支持 30 类植物病害的智能检测（基于 PlantDoc 数据集）
+- 支持 29 类植物病害的智能检测（基于 PlantDoc 数据集）
 - 完善的用户管理与权限控制
 - 知识库系统提供病害防治参考
 - 实验结果可视化，适合论文撰写
@@ -225,23 +225,29 @@
 
 进入 **「个人中心」** 页面可查看以下信息：
 
-- 用户名（不可修改）
+- 用户头像（支持自定义上传）
+- 用户名（支持修改，需唯一）
 - 手机号
 - 邮箱
 - 注册时间
 - 最后登录时间
 
-### 9.2 修改个人信息
+### 9.2 上传/修改头像
+
+1. 在个人中心页面，点击头像区域的 **「更换头像」** 按钮
+2. 选择一张本地图片文件（支持 JPG、PNG、GIF 格式，最大 2MB）
+3. 上传成功后头像即时更新，同时导航栏头像同步刷新
+
+### 9.3 修改个人信息
 
 1. 在个人中心页面点击 **「编辑」** 按钮
 2. 可修改的字段：
+   - **用户名**：2~20 个字符，需唯一（不与他人重复）
    - **手机号**：11 位有效手机号码
    - **邮箱**：有效的电子邮箱地址
 3. 修改后点击 **「保存」** 按钮
 
-> ⚠️ 用户名注册后不可修改。
-
-### 9.3 修改密码
+### 9.4 修改密码
 
 1. 在个人中心页面点击 **「修改密码」**
 2. 输入 **旧密码**
@@ -314,13 +320,13 @@
 ### 11.1 数据集概述
 
 - **数据来源**：DatasetNinja（https://datasetninja.com/plantdoc）
-- **类别数量**：30 类，覆盖 13 种植物
+- **类别数量**：29 类，覆盖 13 种植物
 - **标注格式**：目标检测边界框（Bounding Box）标注
 - **适用任务**：植物叶片病害目标检测
 
 ### 11.2 类别列表
 
-完整 30 类病害类别如下：
+完整 29 类病害类别如下：
 
 | ID | 英文名称 | 中文名称 |
 |----|----------|----------|
@@ -336,24 +342,23 @@
 | 9 | Corn_rust_leaf | 玉米锈病叶 |
 | 10 | Grape_leaf | 葡萄健康叶 |
 | 11 | Grape_leaf_black_rot | 葡萄黑腐病叶 |
-| 12 | Grape_leaf_blight | 葡萄叶枯病 |
-| 13 | Peach_leaf | 桃树健康叶 |
-| 14 | Potato_leaf | 马铃薯健康叶 |
-| 15 | Potato_leaf_early_blight | 马铃薯早疫病叶 |
-| 16 | Potato_leaf_late_blight | 马铃薯晚疫病叶 |
-| 17 | Raspberry_leaf | 覆盆子健康叶 |
-| 18 | Soybean_leaf | 大豆健康叶 |
-| 19 | Squash_Powdery_mildew_leaf | 南瓜白粉病叶 |
-| 20 | Strawberry_leaf | 草莓健康叶 |
-| 21 | Tomato_Early_blight_leaf | 番茄早疫病叶 |
-| 22 | Tomato_Septoria_leaf_spot | 番茄叶斑病 |
-| 23 | Tomato_leaf | 番茄健康叶 |
-| 24 | Tomato_leaf_bacterial_spot | 番茄细菌性斑点病叶 |
-| 25 | Tomato_leaf_late_blight | 番茄晚疫病叶 |
-| 26 | Tomato_leaf_mosaic_virus | 番茄花叶病毒叶 |
-| 27 | Tomato_leaf_yellow_virus | 番茄黄化曲叶病毒叶 |
-| 28 | Tomato_mold_leaf | 番茄霉病叶 |
-| 29 | Tomato_two_spotted_spider_mites_leaf | 番茄二斑叶螨叶 |
+| 12 | Peach_leaf | 桃树健康叶 |
+| 13 | Potato_leaf | 马铃薯健康叶 |
+| 14 | Potato_leaf_early_blight | 马铃薯早疫病叶 |
+| 15 | Potato_leaf_late_blight | 马铃薯晚疫病叶 |
+| 16 | Raspberry_leaf | 覆盆子健康叶 |
+| 17 | Soybean_leaf | 大豆健康叶 |
+| 18 | Squash_Powdery_mildew_leaf | 南瓜白粉病叶 |
+| 19 | Strawberry_leaf | 草莓健康叶 |
+| 20 | Tomato_Early_blight_leaf | 番茄早疫病叶 |
+| 21 | Tomato_Septoria_leaf_spot | 番茄斑枯病叶 |
+| 22 | Tomato_leaf | 番茄健康叶 |
+| 23 | Tomato_leaf_bacterial_spot | 番茄细菌性斑点病叶 |
+| 24 | Tomato_leaf_late_blight | 番茄晚疫病叶 |
+| 25 | Tomato_leaf_mosaic_virus | 番茄花叶病毒叶 |
+| 26 | Tomato_leaf_yellow_virus | 番茄黄化曲叶病毒叶 |
+| 27 | Tomato_mold_leaf | 番茄霉病叶 |
+| 28 | Tomato_two_spotted_spider_mites_leaf | 番茄二斑叶螨叶 |
 
 ### 11.3 数据集准备
 
@@ -427,7 +432,8 @@ A：这两个功能仅对管理员开放。请确认当前账号拥有管理员�
 
 A：建议在模型训练管理页面参考实验设计建议，包括：
 1. **不同模型对比实验**：使用 yolo11n/s/m/l/x 不同规模模型训练并对比指标
-2. **消融实验**：调整 epochs、batch size、学习率等超参数观察影响
-3. **数据增强实验**：对比不同数据增强策略的效果
+2. **训练策略对比实验**：使用预定义策略（基线/增强/微调/轻量化）进行系统化对比
+3. **消融实验**：调整 epochs、batch size、学习率等超参数观察影响
+4. **数据增强实验**：对比不同数据增强策略的效果
 
 实验结果页面提供训练曲线和评估指标的可视化展示，可直接用于论文图表。

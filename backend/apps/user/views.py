@@ -1,10 +1,12 @@
 import base64
 import hashlib
 import io
+import os
 import random
 import string
 
 from PIL import Image, ImageDraw, ImageFont
+from django.conf import settings
 from django.core.cache import cache
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
@@ -148,16 +150,70 @@ class ProfileView(APIView):
 
     def put(self, request):
         user = request.user
-        # 只允许修改 phone 和 email
         phone = request.data.get('phone')
         email = request.data.get('email')
+        username = request.data.get('username')
+
+        update_fields = []
+
+        if username and username != user.username:
+            if len(username) < 2 or len(username) > 20:
+                return Response({"code": 400, "msg": "用户名长度需为2~20个字符"})
+            if User.objects.filter(username=username).exclude(id=user.id).exists():
+                return Response({"code": 400, "msg": "用户名已被占用"})
+            user.username = username
+            update_fields.append('username')
+
         if phone:
             user.phone = phone
+            update_fields.append('phone')
         if email is not None:
             user.email = email
-        user.save(update_fields=['phone', 'email'])
+            update_fields.append('email')
+
+        if update_fields:
+            user.save(update_fields=update_fields)
+
         serializer = UserSerializer(user)
         return Response({"code": 200, "msg": "更新成功", "data": serializer.data})
+
+
+class AvatarUploadView(APIView):
+    """头像上传接口"""
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        avatar_file = request.FILES.get('avatar')
+        if not avatar_file:
+            return Response({"code": 400, "msg": "请选择头像文件"})
+
+        allowed_types = ['image/jpeg', 'image/png', 'image/gif']
+        if avatar_file.content_type not in allowed_types:
+            return Response({"code": 400, "msg": "仅支持 JPG、PNG、GIF 格式"})
+
+        max_size = 2 * 1024 * 1024
+        if avatar_file.size > max_size:
+            return Response({"code": 400, "msg": "头像文件大小不能超过 2MB"})
+
+        ext = os.path.splitext(avatar_file.name)[1].lower() or '.jpg'
+        filename = f"{request.user.id}_avatar{ext}"
+        avatar_dir = os.path.join(settings.MEDIA_ROOT, 'avatars')
+        os.makedirs(avatar_dir, exist_ok=True)
+        avatar_path = os.path.join(avatar_dir, filename)
+
+        with open(avatar_path, 'wb') as f:
+            for chunk in avatar_file.chunks():
+                f.write(chunk)
+
+        avatar_url = f"{settings.MEDIA_URL}avatars/{filename}"
+        request.user.avatar = avatar_url
+        request.user.save(update_fields=['avatar'])
+
+        return Response({
+            "code": 200,
+            "msg": "头像上传成功",
+            "data": {"avatar": avatar_url}
+        })
 
 
 class PasswordView(APIView):

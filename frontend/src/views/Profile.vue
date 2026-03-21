@@ -9,9 +9,21 @@
           <template #header><span class="card-title">基本信息</span></template>
 
           <div class="avatar-area">
-            <el-avatar :size="72" class="big-avatar">
-              {{ userInfo?.username?.charAt(0)?.toUpperCase() || 'U' }}
-            </el-avatar>
+            <div class="avatar-wrapper">
+              <el-avatar :size="72" :src="avatarSrc" class="big-avatar">
+                {{ userInfo?.username?.charAt(0)?.toUpperCase() || 'U' }}
+              </el-avatar>
+              <el-upload
+                class="avatar-upload"
+                action=""
+                :auto-upload="false"
+                :show-file-list="false"
+                accept="image/jpeg,image/png,image/gif"
+                :on-change="handleAvatarChange"
+              >
+                <el-button size="small" type="primary" :loading="uploadingAvatar">更换头像</el-button>
+              </el-upload>
+            </div>
             <div>
               <div class="username-text">{{ userInfo?.username }}</div>
               <el-tag :type="userInfo?.is_admin === 1 ? 'danger' : 'success'">
@@ -21,8 +33,8 @@
           </div>
 
           <el-form ref="infoFormRef" :model="infoForm" :rules="infoRules" label-width="80px">
-            <el-form-item label="用户名">
-              <el-input :model-value="userInfo?.username" disabled />
+            <el-form-item label="用户名" prop="username">
+              <el-input v-model="infoForm.username" placeholder="请输入用户名（2~20字符）" />
             </el-form-item>
             <el-form-item label="手机号" prop="phone">
               <el-input v-model="infoForm.phone" placeholder="请输入手机号" />
@@ -84,7 +96,7 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useUserStore } from '../store/user';
-import { updateProfile, updatePassword } from '../api/user';
+import { updateProfile, updatePassword, uploadAvatar } from '../api/user';
 
 const userStore = useUserStore();
 const userInfo = computed(() => userStore.userInfo);
@@ -93,8 +105,17 @@ const infoFormRef = ref(null);
 const pwdFormRef = ref(null);
 const savingInfo = ref(false);
 const savingPwd = ref(false);
+const uploadingAvatar = ref(false);
+
+const avatarSrc = computed(() => {
+    const avatar = userInfo.value?.avatar;
+    if (!avatar) return '';
+    if (avatar.startsWith('http')) return avatar;
+    return avatar;
+});
 
 const infoForm = reactive({
+    username: '',
     phone: '',
     email: '',
 });
@@ -106,6 +127,10 @@ const pwdForm = reactive({
 });
 
 const infoRules = {
+    username: [
+        { required: true, message: '用户名不能为空', trigger: 'blur' },
+        { min: 2, max: 20, message: '用户名长度为2~20个字符', trigger: 'blur' },
+    ],
     phone: [
         { required: true, message: '手机号不能为空', trigger: 'blur' },
         { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' },
@@ -133,12 +158,41 @@ const pwdRules = {
     ],
 };
 
+const handleAvatarChange = async (file) => {
+    const rawFile = file.raw;
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!allowedTypes.includes(rawFile.type)) {
+        ElMessage.error('仅支持 JPG、PNG、GIF 格式');
+        return;
+    }
+    if (rawFile.size > 2 * 1024 * 1024) {
+        ElMessage.error('头像文件大小不能超过 2MB');
+        return;
+    }
+    uploadingAvatar.value = true;
+    try {
+        const formData = new FormData();
+        formData.append('avatar', rawFile);
+        await uploadAvatar(formData);
+        await userStore.fetchProfile();
+        ElMessage.success('头像上传成功');
+    } catch {
+        ElMessage.error('头像上传失败');
+    } finally {
+        uploadingAvatar.value = false;
+    }
+};
+
 const saveInfo = async () => {
     const valid = await infoFormRef.value?.validate().catch(() => false);
     if (!valid) return;
     savingInfo.value = true;
     try {
-        await updateProfile({ phone: infoForm.phone, email: infoForm.email });
+        await updateProfile({
+            username: infoForm.username,
+            phone: infoForm.phone,
+            email: infoForm.email,
+        });
         await userStore.fetchProfile();
         ElMessage.success('信息更新成功');
     } finally {
@@ -164,6 +218,7 @@ const savePassword = async () => {
 
 onMounted(() => {
     if (userInfo.value) {
+        infoForm.username = userInfo.value.username || '';
         infoForm.phone = userInfo.value.phone || '';
         infoForm.email = userInfo.value.email || '';
     }
@@ -195,11 +250,22 @@ onMounted(() => {
     border-radius: 10px;
 }
 
+.avatar-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
 .big-avatar {
     background: #409eff;
     color: #fff;
     font-size: 24px;
     font-weight: 700;
+}
+
+.avatar-upload {
+    display: inline-block;
 }
 
 .username-text {

@@ -15,8 +15,12 @@ yolo/
 ├── export_model.py            # 模型格式导出工具
 ├── prepare_plantdoc.py        # PlantDoc 数据集准备脚本
 └── configs/
-    ├── data.yaml              # PlantDoc 数据集配置 (30 类)
-    └── train_config.yaml      # YOLOv11 训练超参数参考
+    ├── data.yaml              # PlantDoc 数据集配置 (29 类)
+    ├── train_config.yaml      # YOLOv11 训练超参数参考
+    ├── strategy_baseline.yaml     # 基线训练策略
+    ├── strategy_augment.yaml      # 数据增强策略
+    ├── strategy_finetune.yaml     # 微调训练策略
+    └── strategy_lightweight.yaml  # 轻量化部署策略
 ```
 
 ## 快速开始
@@ -102,9 +106,9 @@ cp runs/train/plant_disease/weights/best.pt model/best.pt
 
 > 建议本科毕设使用 **YOLOv11n** 或 **YOLOv11s**，训练速度快且精度足够。
 
-## PlantDoc 数据集 (30 类)
+## PlantDoc 数据集 (29 类)
 
-PlantDoc 数据集包含 13 种植物的 30 类病害/健康状态：
+PlantDoc 数据集包含 13 种植物的 29 类病害/健康状态：
 
 | 植物 | 类别 |
 |------|------|
@@ -113,7 +117,7 @@ PlantDoc 数据集包含 13 种植物的 30 类病害/健康状态：
 | 蓝莓 | 健康叶 |
 | 樱桃 | 健康叶 |
 | 玉米 | 灰斑病、叶枯病、锈病叶 |
-| 葡萄 | 健康叶、黑腐病叶、叶枯病 |
+| 葡萄 | 健康叶、黑腐病叶 |
 | 桃树 | 健康叶 |
 | 马铃薯 | 健康叶、早疫病叶、晚疫病叶 |
 | 覆盆子 | 健康叶 |
@@ -162,6 +166,11 @@ python yolo/train.py --model yolo11m.pt --name exp_yolo11m
 
 对比不同数据增强策略的影响。
 
+```bash
+python yolo/train.py --strategy baseline --name exp_no_aug
+python yolo/train.py --strategy augment  --name exp_aug
+```
+
 ### 实验三：学习率对比实验
 
 ```bash
@@ -169,6 +178,23 @@ python yolo/train.py --lr0 0.001 --name exp_lr_0001
 python yolo/train.py --lr0 0.01  --name exp_lr_001
 python yolo/train.py --lr0 0.1   --name exp_lr_01
 ```
+
+### 实验四：训练策略对比实验
+
+使用预定义策略进行系统化对比：
+
+```bash
+python yolo/train.py --strategy baseline     --name exp_baseline
+python yolo/train.py --strategy augment      --name exp_augment
+python yolo/train.py --strategy finetune     --name exp_finetune
+python yolo/train.py --strategy lightweight  --name exp_lightweight
+```
+
+各策略说明：
+- **baseline**：标准基线策略（YOLOv11n, SGD, 100 epochs），作为论文对照基准
+- **augment**：强化数据增强策略（Mosaic + MixUp + 旋转 + 色彩抖动），验证数据增强对小样本类别的提升效果
+- **finetune**：大模型微调策略（YOLOv11s, AdamW, 余弦退火学习率），追求更高检测精度
+- **lightweight**：轻量化部署策略（YOLOv11n, 小 batch, 低分辨率），适用于边缘设备部署场景
 
 ### 论文图表建议
 

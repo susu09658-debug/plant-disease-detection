@@ -7,8 +7,12 @@ Plant Disease Detection - Model Training Script (YOLOv11 + PlantDoc)
     python yolo/train.py --model yolo11s.pt        # 使用 YOLO11s 模型
     python yolo/train.py --epochs 200 --batch 32   # 自定义训练参数
     python yolo/train.py --device 0                # 指定 GPU
+    python yolo/train.py --strategy baseline       # 使用基线训练策略
+    python yolo/train.py --strategy augment        # 使用数据增强策略
+    python yolo/train.py --strategy finetune       # 使用微调策略
+    python yolo/train.py --strategy lightweight    # 使用轻量化部署策略
 
-训练完成后，最优权重保存在: runs/train/plant_disease/weights/best.pt
+训练完成后，最优权重保存在: runs/train/<name>/weights/best.pt
 可将 best.pt 复制到 model/ 目录供系统推理使用。
 """
 
@@ -16,35 +20,62 @@ import argparse
 import sys
 from pathlib import Path
 
+import yaml
+
 # 确保项目根目录在 Python 路径中
 ROOT = Path(__file__).resolve().parent.parent
+CONFIGS_DIR = Path(__file__).resolve().parent / 'configs'
+
+STRATEGY_MAP = {
+    'baseline': CONFIGS_DIR / 'strategy_baseline.yaml',
+    'augment': CONFIGS_DIR / 'strategy_augment.yaml',
+    'finetune': CONFIGS_DIR / 'strategy_finetune.yaml',
+    'lightweight': CONFIGS_DIR / 'strategy_lightweight.yaml',
+}
+
 sys.path.insert(0, str(ROOT))
+
+
+def load_strategy(strategy_name):
+    """加载预定义训练策略配置"""
+    path = STRATEGY_MAP.get(strategy_name)
+    if not path or not path.exists():
+        print(f'错误: 未知策略 "{strategy_name}"')
+        print(f'可用策略: {", ".join(STRATEGY_MAP.keys())}')
+        sys.exit(1)
+    with open(path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='YOLOv11 植物病害检测模型训练')
 
+    # 策略参数
+    parser.add_argument('--strategy', type=str, default=None,
+                        choices=list(STRATEGY_MAP.keys()),
+                        help='预定义训练策略 (baseline/augment/finetune/lightweight)')
+
     # 模型参数
-    parser.add_argument('--model', type=str, default='yolo11n.pt',
+    parser.add_argument('--model', type=str, default=None,
                         help='预训练模型名称或路径 (yolo11n/s/m/l/x.pt)')
     parser.add_argument('--data', type=str, default=str(ROOT / 'yolo' / 'configs' / 'data.yaml'),
                         help='数据集配置文件路径')
 
     # 训练参数
-    parser.add_argument('--epochs', type=int, default=100, help='训练轮数')
-    parser.add_argument('--batch', type=int, default=16, help='批次大小')
-    parser.add_argument('--imgsz', type=int, default=640, help='输入图片尺寸')
-    parser.add_argument('--patience', type=int, default=20, help='早停轮数')
+    parser.add_argument('--epochs', type=int, default=None, help='训练轮数')
+    parser.add_argument('--batch', type=int, default=None, help='批次大小')
+    parser.add_argument('--imgsz', type=int, default=None, help='输入图片尺寸')
+    parser.add_argument('--patience', type=int, default=None, help='早停轮数')
 
     # 优化器参数
-    parser.add_argument('--optimizer', type=str, default='SGD',
+    parser.add_argument('--optimizer', type=str, default=None,
                         choices=['SGD', 'Adam', 'AdamW'], help='优化器')
-    parser.add_argument('--lr0', type=float, default=0.01, help='初始学习率')
+    parser.add_argument('--lr0', type=float, default=None, help='初始学习率')
 
     # 输出参数
-    parser.add_argument('--project', type=str, default=str(ROOT / 'runs' / 'train'),
+    parser.add_argument('--project', type=str, default=None,
                         help='训练结果保存目录')
-    parser.add_argument('--name', type=str, default='plant_disease', help='实验名称')
+    parser.add_argument('--name', type=str, default=None, help='实验名称')
     parser.add_argument('--resume', action='store_true', help='从上次中断处继续训练')
 
     # 设备参数
@@ -57,6 +88,43 @@ def parse_args():
 def main():
     args = parse_args()
 
+    # 加载策略配置（如果指定）
+    strategy_cfg = {}
+    if args.strategy:
+        strategy_cfg = load_strategy(args.strategy)
+        print(f'已加载训练策略: {args.strategy}')
+
+    # 合并参数：命令行参数 > 策略配置 > 默认值
+    defaults = {
+        'model': 'yolo11n.pt',
+        'epochs': 100,
+        'batch': 16,
+        'imgsz': 640,
+        'patience': 20,
+        'optimizer': 'SGD',
+        'lr0': 0.01,
+        'project': str(ROOT / 'runs' / 'train'),
+        'name': 'plant_disease',
+    }
+
+    def resolve(key):
+        cli_val = getattr(args, key, None)
+        if cli_val is not None:
+            return cli_val
+        if key in strategy_cfg:
+            return strategy_cfg[key]
+        return defaults[key]
+
+    model = resolve('model')
+    epochs = resolve('epochs')
+    batch = resolve('batch')
+    imgsz = resolve('imgsz')
+    patience = resolve('patience')
+    optimizer = resolve('optimizer')
+    lr0 = resolve('lr0')
+    project = resolve('project')
+    name = resolve('name')
+
     # 导入 ultralytics（延迟导入，便于查看帮助信息）
     try:
         from ultralytics import YOLO
@@ -67,15 +135,17 @@ def main():
 
     print('=' * 60)
     print('  YOLOv11 植物病害检测模型训练 (PlantDoc)')
+    if args.strategy:
+        print(f'  策略:     {args.strategy}')
     print('=' * 60)
-    print(f'  模型:     {args.model}')
+    print(f'  模型:     {model}')
     print(f'  数据集:   {args.data}')
-    print(f'  轮数:     {args.epochs}')
-    print(f'  批次大小: {args.batch}')
-    print(f'  图片尺寸: {args.imgsz}')
-    print(f'  优化器:   {args.optimizer}')
-    print(f'  学习率:   {args.lr0}')
-    print(f'  保存路径: {args.project}/{args.name}')
+    print(f'  轮数:     {epochs}')
+    print(f'  批次大小: {batch}')
+    print(f'  图片尺寸: {imgsz}')
+    print(f'  优化器:   {optimizer}')
+    print(f'  学习率:   {lr0}')
+    print(f'  保存路径: {project}/{name}')
     print('=' * 60)
 
     # 检查数据集配置文件
@@ -85,31 +155,42 @@ def main():
         sys.exit(1)
 
     # 加载预训练模型
-    print(f'\n正在加载预训练模型: {args.model} ...')
-    model = YOLO(args.model)
+    print(f'\n正在加载预训练模型: {model} ...')
+    yolo_model = YOLO(model)
 
     # 构造训练参数
     train_kwargs = {
         'data': str(data_path),
-        'epochs': args.epochs,
-        'batch': args.batch,
-        'imgsz': args.imgsz,
-        'patience': args.patience,
-        'optimizer': args.optimizer,
-        'lr0': args.lr0,
-        'project': args.project,
-        'name': args.name,
+        'epochs': epochs,
+        'batch': batch,
+        'imgsz': imgsz,
+        'patience': patience,
+        'optimizer': optimizer,
+        'lr0': lr0,
+        'project': project,
+        'name': name,
         'plots': True,
-        'save_period': 10,
+        'save_period': strategy_cfg.get('save_period', 10),
         'resume': args.resume,
     }
+
+    # 从策略配置中加载额外的训练参数（数据增强等）
+    extra_keys = [
+        'lrf', 'momentum', 'weight_decay',
+        'hsv_h', 'hsv_s', 'hsv_v',
+        'degrees', 'translate', 'scale',
+        'fliplr', 'flipud', 'mosaic', 'mixup',
+    ]
+    for key in extra_keys:
+        if key in strategy_cfg:
+            train_kwargs[key] = strategy_cfg[key]
 
     if args.device:
         train_kwargs['device'] = args.device
 
     # 开始训练
     print('\n开始训练...\n')
-    results = model.train(**train_kwargs)
+    results = yolo_model.train(**train_kwargs)
 
     # 训练完成
     print('\n' + '=' * 60)
@@ -117,7 +198,7 @@ def main():
     print('=' * 60)
 
     # 输出关键指标
-    result_dir = Path(args.project) / args.name
+    result_dir = Path(project) / name
     best_weight = result_dir / 'weights' / 'best.pt'
 
     if best_weight.exists():
