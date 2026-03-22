@@ -93,9 +93,9 @@
         <div class="navbar-right">
           <el-dropdown @command="handleCommand">
             <div class="user-info">
-              <el-avatar :size="32" :src="userInfo?.avatar || ''" class="user-avatar">
+              <el-avatar :size="32" :src="avatarUrl" class="user-avatar">
                 {{ userInfo?.username?.charAt(0)?.toUpperCase() || 'U' }}
-              </el-avatar>
+              </el-avatar>>
               <span class="username">{{ userInfo?.username }}</span>
               <el-icon><ArrowDown /></el-icon>
             </div>
@@ -134,6 +134,20 @@ const userStore = useUserStore();
 const isCollapse = ref(false);
 
 const userInfo = computed(() => userStore.userInfo);
+const avatarUrl = computed(() => {
+  const avatar = userInfo.value?.avatar;
+  if (!avatar) return ''; 
+
+  // 如果已经是完整路径 (以 http 开头)，直接返回
+  if (avatar.startsWith('http')) return avatar;
+
+  // 从环境变量读取 API 地址
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  
+  // 规范拼接：确保 baseUrl 和 avatar 之间只有一个斜杠
+  // 即使 avatar 开头有斜杠也能正确处理
+  return `${baseUrl}/${avatar}`.replace(/([^:])\/\/+/g, '$1/');
+});
 const activeMenu = computed(() => route.path);
 const currentTitle = computed(() => route.meta?.title || '');
 
@@ -154,6 +168,19 @@ const handleCommand = async (cmd) => {
         router.push('/login');
     }
 };
+import { onMounted, watch } from 'vue';
+
+// 页面加载完看一眼
+onMounted(() => {
+  console.log('--- 调试头像信息 ---');
+  console.log('原始 userInfo:', userStore.userInfo);
+  console.log('拼接后的 avatarUrl:', avatarUrl.value);
+});
+
+// 如果数据是异步获取的，监听它
+watch(() => userStore.userInfo, (newVal) => {
+  console.log('UserInfo 变动了:', newVal?.avatar);
+}, { deep: true });
 </script>
 
 <style scoped>

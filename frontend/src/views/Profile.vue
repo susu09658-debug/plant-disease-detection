@@ -108,9 +108,12 @@ const savingPwd = ref(false);
 const uploadingAvatar = ref(false);
 
 const avatarSrc = computed(() => {
-    const avatar = userInfo.value?.avatar;
-    if (!avatar) return '';
-    return avatar;
+  const avatar = userInfo.value?.avatar;
+  const baseUrl = import.meta.env.VITE_API_URL || '';
+
+  if (!avatar) return null; // 无头像时显示首字母
+  if (avatar.startsWith('http')) return avatar;
+  return baseUrl + avatar; // 你的 /media/... 路径会在这里拼接
 });
 
 const infoForm = reactive({
