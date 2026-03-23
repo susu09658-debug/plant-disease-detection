@@ -16,14 +16,16 @@ class Command(BaseCommand):
     help = '创建管理员用户 (Create an admin user)'
 
     def add_arguments(self, parser):
-        parser.add_argument('--username', type=str, required=True, help='管理员用户名')
+        parser.add_argument('--username', type=str, required=True, help='管理员用户ID')
         parser.add_argument('--password', type=str, required=True, help='管理员密码')
+        parser.add_argument('--nickname', type=str, default='', help='管理员昵称（可选，默认同用户ID）')
         parser.add_argument('--phone', type=str, default='00000000000', help='手机号（可选）')
         parser.add_argument('--email', type=str, default='', help='邮箱（可选）')
 
     def handle(self, *args, **options):
         username = options['username']
         password = options['password']
+        nickname = options['nickname'] or username
         phone = options['phone']
         email = options['email']
 
@@ -43,6 +45,7 @@ class Command(BaseCommand):
 
         User.objects.create(
             username=username,
+            nickname=nickname,
             password=make_password(password),
             phone=phone,
             email=email if email else None,

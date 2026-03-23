@@ -11,7 +11,7 @@
           <div class="avatar-area">
             <div class="avatar-wrapper">
               <el-avatar :size="72" :src="avatarSrc" class="big-avatar">
-                {{ userInfo?.username?.charAt(0)?.toUpperCase() || 'U' }}
+                {{ (userInfo?.nickname || userInfo?.username)?.charAt(0)?.toUpperCase() || 'U' }}
               </el-avatar>
               <el-upload
                 class="avatar-upload"
@@ -25,7 +25,8 @@
               </el-upload>
             </div>
             <div>
-              <div class="username-text">{{ userInfo?.username }}</div>
+              <div class="username-text">{{ userInfo?.nickname || userInfo?.username }}</div>
+              <div class="user-id-text">ID: {{ userInfo?.username }}</div>
               <el-tag :type="userInfo?.is_admin === 1 ? 'danger' : 'success'">
                 {{ userInfo?.is_admin === 1 ? '管理员' : '普通用户' }}
               </el-tag>
@@ -33,8 +34,11 @@
           </div>
 
           <el-form ref="infoFormRef" :model="infoForm" :rules="infoRules" label-width="80px">
-            <el-form-item label="用户名" prop="username">
-              <el-input v-model="infoForm.username" placeholder="请输入用户名（2~20字符）" />
+            <el-form-item label="用户ID">
+              <el-input :model-value="userInfo?.username" disabled />
+            </el-form-item>
+            <el-form-item label="昵称" prop="nickname">
+              <el-input v-model="infoForm.nickname" placeholder="请输入昵称（1~20字符）" />
             </el-form-item>
             <el-form-item label="手机号" prop="phone">
               <el-input v-model="infoForm.phone" placeholder="请输入手机号" />
@@ -117,7 +121,7 @@ const avatarSrc = computed(() => {
 });
 
 const infoForm = reactive({
-    username: '',
+    nickname: '',
     phone: '',
     email: '',
 });
@@ -129,9 +133,9 @@ const pwdForm = reactive({
 });
 
 const infoRules = {
-    username: [
-        { required: true, message: '用户名不能为空', trigger: 'blur' },
-        { min: 2, max: 20, message: '用户名长度为2~20个字符', trigger: 'blur' },
+    nickname: [
+        { required: true, message: '昵称不能为空', trigger: 'blur' },
+        { min: 1, max: 20, message: '昵称长度为1~20个字符', trigger: 'blur' },
     ],
     phone: [
         { required: true, message: '手机号不能为空', trigger: 'blur' },
@@ -191,7 +195,7 @@ const saveInfo = async () => {
     savingInfo.value = true;
     try {
         await updateProfile({
-            username: infoForm.username,
+            nickname: infoForm.nickname,
             phone: infoForm.phone,
             email: infoForm.email,
         });
@@ -220,7 +224,7 @@ const savePassword = async () => {
 
 onMounted(() => {
     if (userInfo.value) {
-        infoForm.username = userInfo.value.username || '';
+        infoForm.nickname = userInfo.value.nickname || userInfo.value.username || '';
         infoForm.phone = userInfo.value.phone || '';
         infoForm.email = userInfo.value.email || '';
     }
@@ -274,6 +278,12 @@ onMounted(() => {
     font-size: 18px;
     font-weight: 700;
     color: #303133;
+    margin-bottom: 4px;
+}
+
+.user-id-text {
+    font-size: 12px;
+    color: #909399;
     margin-bottom: 6px;
 }
 </style>

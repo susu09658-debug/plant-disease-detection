@@ -3,7 +3,8 @@ from django.utils import timezone
 
 
 class User(models.Model):
-    username = models.CharField(max_length=20, unique=True, verbose_name='用户名')
+    username = models.CharField(max_length=20, unique=True, verbose_name='用户ID')
+    nickname = models.CharField(max_length=20, default='', verbose_name='用户昵称')
     password = models.CharField(max_length=128, verbose_name='加密密码')
     phone = models.CharField(max_length=11, verbose_name='手机号')
     email = models.CharField(max_length=50, blank=True, null=True, verbose_name='邮箱')

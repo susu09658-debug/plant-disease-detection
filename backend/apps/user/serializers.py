@@ -8,7 +8,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'phone', 'email', 'avatar', 'is_admin', 'is_active', 'create_time', 'last_login']
+        fields = ['id', 'username', 'nickname', 'phone', 'email', 'avatar', 'is_admin', 'is_active', 'create_time', 'last_login']
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -16,8 +16,11 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'password', 'phone']
+        fields = ['username', 'nickname', 'password', 'phone']
 
     def create(self, validated_data):
+        # 如果未提供昵称，默认使用用户ID作为昵称
+        if not validated_data.get('nickname'):
+            validated_data['nickname'] = validated_data['username']
         validated_data['password'] = make_password(validated_data['password'])
         return User.objects.create(**validated_data)

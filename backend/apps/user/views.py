@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 from django.conf import settings
 from django.core.cache import cache
 from django.contrib.auth.hashers import make_password, check_password
+from django.db import models
 from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -104,14 +105,14 @@ class LoginView(APIView):
         captcha_token = request.data.get('captcha_token')
 
         if not username or not password:
-            return Response({"code": 400, "msg": "用户名或密码不能为空"})
+            return Response({"code": 400, "msg": "用户ID或密码不能为空"})
 
         if not _check_captcha(captcha_token, captcha, delete_after_verify=True):
             return Response({"code": 400, "msg": "图形验证码错误或已过期"})
 
         user = User.objects.filter(username=username).first()
         if not user or not check_password(password, user.password):
-            return Response({"code": 401, "msg": "用户名或密码错误"})
+            return Response({"code": 401, "msg": "用户ID或密码错误"})
 
         if user.is_active == 0:
             return Response({"code": 403, "msg": "账号已被禁用，请联系管理员"})
@@ -152,17 +153,15 @@ class ProfileView(APIView):
         user = request.user
         phone = request.data.get('phone')
         email = request.data.get('email')
-        username = request.data.get('username')
+        nickname = request.data.get('nickname')
 
         update_fields = []
 
-        if username and username != user.username:
-            if len(username) < 2 or len(username) > 20:
-                return Response({"code": 400, "msg": "用户名长度需为2~20个字符"})
-            if User.objects.filter(username=username).exclude(id=user.id).exists():
-                return Response({"code": 400, "msg": "用户名已被占用"})
-            user.username = username
-            update_fields.append('username')
+        if nickname and nickname != user.nickname:
+            if len(nickname) < 1 or len(nickname) > 20:
+                return Response({"code": 400, "msg": "昵称长度需为1~20个字符"})
+            user.nickname = nickname
+            update_fields.append('nickname')
 
         if phone:
             user.phone = phone
@@ -259,7 +258,7 @@ class ResetPasswordView(APIView):
         new_password = request.data.get('new_password')
 
         if not all([username, phone, new_password]):
-            return Response({"code": 400, "msg": "用户名、手机号和新密码不能为空"})
+            return Response({"code": 400, "msg": "用户ID、手机号和新密码不能为空"})
 
         if not _check_captcha(captcha_token, captcha, delete_after_verify=True):
             return Response({"code": 400, "msg": "图形验证码错误或已过期"})
@@ -291,7 +290,9 @@ class AdminUserListView(APIView):
 
         queryset = User.objects.all().order_by('-create_time')
         if keyword:
-            queryset = queryset.filter(username__icontains=keyword)
+            queryset = queryset.filter(
+                models.Q(username__icontains=keyword) | models.Q(nickname__icontains=keyword)
+            )
 
         total = queryset.count()
         start = (page - 1) * page_size

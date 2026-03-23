@@ -94,9 +94,9 @@
           <el-dropdown @command="handleCommand">
             <div class="user-info">
               <el-avatar :size="32" :src="avatarUrl" class="user-avatar">
-                {{ userInfo?.username?.charAt(0)?.toUpperCase() || 'U' }}
+                {{ (userInfo?.nickname || userInfo?.username)?.charAt(0)?.toUpperCase() || 'U' }}
               </el-avatar>>
-              <span class="username">{{ userInfo?.username }}</span>
+              <span class="username">{{ userInfo?.nickname || userInfo?.username }}</span>
               <el-icon><ArrowDown /></el-icon>
             </div>
             <template #dropdown>
