@@ -33,7 +33,7 @@ lrf: 0.01                    # 余弦退火终止学习率比例（lr_final = lr
 momentum: 0.937              # 动量系数
 weight_decay: 0.01           # 权重衰减（AdamW 解耦权重衰减）
 warmup_epochs: 5.0           # 学习率预热轮数
-warmup_momentum: 0.5         # 预热期间动量初始值
+warmup_momentum: 0.5         # 预热起始动量（从 0.5 过渡到 momentum=0.937）
 warmup_bias_lr: 0.01         # 预热期间偏置学习率
 
 # ---- 数据增强参数（强化增强） ----
