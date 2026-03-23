@@ -9,7 +9,7 @@
 # ---- 基本训练参数 ----
 model: yolo11n.pt            # 轻量级预训练模型
 epochs: 100                  # 训练轮数
-batch: 16                    # 批次大小
+batch: 32                    # 批次大小
 imgsz: 640                   # 输入图片尺寸
 patience: 20                 # 早停轮数
 
