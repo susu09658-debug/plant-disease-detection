@@ -11,6 +11,7 @@ Plant Disease Detection - Model Training Script (YOLOv11 + PlantDoc)
     python yolo/train.py --strategy augment        # 使用数据增强策略
     python yolo/train.py --strategy finetune       # 使用微调策略
     python yolo/train.py --strategy lightweight    # 使用轻量化部署策略
+    python yolo/train.py --strategy thesis         # 使用论文优化策略
 
 训练完成后，最优权重保存在: runs/train/<name>/weights/best.pt
 可将 best.pt 复制到 model/ 目录供系统推理使用。
@@ -31,6 +32,7 @@ STRATEGY_MAP = {
     'augment': CONFIGS_DIR / 'strategy_augment.yaml',
     'finetune': CONFIGS_DIR / 'strategy_finetune.yaml',
     'lightweight': CONFIGS_DIR / 'strategy_lightweight.yaml',
+    'thesis': CONFIGS_DIR / 'strategy_thesis.yaml',
 }
 
 sys.path.insert(0, str(ROOT))
@@ -177,9 +179,11 @@ def main():
     # 从策略配置中加载额外的训练参数（数据增强等）
     extra_keys = [
         'lrf', 'momentum', 'weight_decay',
+        'warmup_epochs', 'warmup_momentum', 'warmup_bias_lr',
         'hsv_h', 'hsv_s', 'hsv_v',
         'degrees', 'translate', 'scale',
         'fliplr', 'flipud', 'mosaic', 'mixup',
+        'copy_paste', 'label_smoothing',
     ]
     for key in extra_keys:
         if key in strategy_cfg:

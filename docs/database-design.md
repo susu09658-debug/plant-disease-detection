@@ -14,7 +14,8 @@
 | 字段        | 类型          | 约束                    | 说明             |
 |-------------|---------------|-------------------------|------------------|
 | id          | bigint        | PK, AUTO_INCREMENT      | 用户ID           |
-| username    | varchar(20)   | NOT NULL, UNIQUE        | 用户名（唯一）   |
+| username    | varchar(20)   | NOT NULL, UNIQUE        | 用户ID（唯一，用于登录） |
+| nickname    | varchar(20)   | NOT NULL, DEFAULT ''    | 用户昵称（用于展示）     |
 | password    | varchar(128)  | NOT NULL                | PBKDF2加密密码   |
 | phone       | varchar(11)   | NOT NULL                | 手机号           |
 | email       | varchar(50)   | NULL                    | 邮箱（可选）     |

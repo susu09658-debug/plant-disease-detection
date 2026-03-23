@@ -16,7 +16,7 @@
               <el-form-item prop="username">
                 <el-input
                   v-model="loginForm.username"
-                  placeholder="请输入用户名"
+                  placeholder="请输入用户ID"
                   prefix-icon="User"
                 />
               </el-form-item>
@@ -62,8 +62,16 @@
               <el-form-item prop="username">
                 <el-input
                   v-model="registerForm.username"
-                  placeholder="请设置用户名（2-20位）"
+                  placeholder="请设置用户ID（2-20位，用于登录）"
                   prefix-icon="User"
+                />
+              </el-form-item>
+
+              <el-form-item prop="nickname">
+                <el-input
+                  v-model="registerForm.nickname"
+                  placeholder="请设置昵称（选填，用于展示）"
+                  prefix-icon="UserFilled"
                 />
               </el-form-item>
 
@@ -105,7 +113,7 @@
                 注 册
               </el-button>
 
-              <div class="hint">注册成功后可直接使用用户名和密码登录。</div>
+              <div class="hint">注册成功后可直接使用用户ID和密码登录。</div>
             </el-form>
           </el-tab-pane>
         </el-tabs>
@@ -116,7 +124,7 @@
     <el-dialog v-model="showForgotDialog" title="忘记密码" width="420px" :close-on-click-modal="false">
       <el-form ref="forgotFormRef" :model="forgotForm" :rules="forgotRules" label-width="0" size="large">
         <el-form-item prop="username">
-          <el-input v-model="forgotForm.username" placeholder="请输入用户名" prefix-icon="User" />
+          <el-input v-model="forgotForm.username" placeholder="请输入用户ID" prefix-icon="User" />
         </el-form-item>
         <el-form-item prop="phone">
           <el-input v-model="forgotForm.phone" placeholder="请输入注册时的手机号" prefix-icon="Iphone" />
@@ -158,7 +166,7 @@ const loginFormRef = ref(null);
 const registerFormRef = ref(null);
 
 const loginForm = reactive({ username: '', password: '', remember: true, captcha: '' });
-const registerForm = reactive({ username: '', phone: '', password: '', confirmPassword: '', agreed: false });
+const registerForm = reactive({ username: '', nickname: '', phone: '', password: '', confirmPassword: '', agreed: false });
 
 const captchaImage = ref('');
 const captchaToken = ref('');
@@ -227,15 +235,18 @@ const validateAgreement = (rule, value, callback) => {
 };
 
 const loginRules = reactive({
-    username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+    username: [{ required: true, message: '请输入用户ID', trigger: 'blur' }],
     password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
     captcha: [{ required: true, message: '请输入图形验证码', trigger: 'blur' }],
 });
 
 const registerRules = reactive({
     username: [
-        { required: true, message: '请输入用户名', trigger: 'blur' },
+        { required: true, message: '请输入用户ID', trigger: 'blur' },
         { min: 2, max: 20, message: '长度2到20个字符', trigger: 'blur' },
+    ],
+    nickname: [
+        { max: 20, message: '昵称最多20个字符', trigger: 'blur' },
     ],
     phone: [{ required: true, validator: validatePhone, trigger: 'blur' }],
     password: [{ required: true, validator: validatePassword, trigger: 'blur' }],
@@ -244,7 +255,7 @@ const registerRules = reactive({
 });
 
 const forgotRules = reactive({
-    username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+    username: [{ required: true, message: '请输入用户ID', trigger: 'blur' }],
     phone: [{ required: true, validator: validatePhone, trigger: 'blur' }],
     newPassword: [{ required: true, validator: validatePassword, trigger: 'blur' }],
     confirmNewPassword: [{ required: true, validator: validateForgotConfirmPassword, trigger: 'blur' }],
@@ -336,7 +347,7 @@ const handleLogin = async () => {
     } catch (error) {
         loginFailCount.value += 1;
         if (loginFailCount.value >= 5) startLock();
-        const msg = error?.response?.data?.msg || error.message || '登录失败，请检查用户名密码';
+        const msg = error?.response?.data?.msg || error.message || '登录失败，请检查用户ID和密码';
         ElMessage.error(msg);
         refreshCaptcha();
     } finally {
@@ -352,6 +363,7 @@ const handleRegister = async () => {
     try {
         await apiRegister({
             username: registerForm.username,
+            nickname: registerForm.nickname,
             phone: registerForm.phone,
             password: registerForm.password,
         });

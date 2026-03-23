@@ -48,10 +48,13 @@
 ```json
 {
   "username": "testuser",
+  "nickname": "测试用户",
   "phone": "13800138000",
   "password": "Password123"
 }
 ```
+
+> `username` 为用户ID（唯一，用于登录），`nickname` 为昵称（用于展示，选填，默认同用户ID）。
 
 ### 1.3 用户登录
 
@@ -77,6 +80,7 @@
     "user_info": {
       "id": 1,
       "username": "testuser",
+      "nickname": "测试用户",
       "phone": "138...",
       "is_admin": 0
     }
@@ -101,10 +105,10 @@
 
 请求体：
 ```json
-{"phone": "13900139000", "email": "user@example.com", "username": "new_username"}
+{"nickname": "新昵称", "phone": "13900139000", "email": "user@example.com"}
 ```
 
-> 支持修改用户名（需唯一）、手机号、邮箱。
+> 支持修改昵称、手机号、邮箱。用户ID（username）注册后不可修改。
 
 ### 1.7 上传头像
 

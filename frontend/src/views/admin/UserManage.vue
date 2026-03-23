@@ -7,7 +7,7 @@
         <el-col :span="8">
           <el-input
             v-model="keyword"
-            placeholder="按用户名搜索"
+            placeholder="按用户ID或昵称搜索"
             clearable
             prefix-icon="Search"
             @keyup.enter="loadData"
@@ -23,7 +23,8 @@
     <el-card shadow="never">
       <el-table v-loading="loading" :data="list" stripe style="width: 100%">
         <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="username" label="用户名" min-width="120" />
+        <el-table-column prop="username" label="用户ID" min-width="120" />
+        <el-table-column prop="nickname" label="昵称" min-width="120" />
         <el-table-column prop="phone" label="手机号" min-width="120" />
         <el-table-column label="角色" width="100">
           <template #default="{ row }">

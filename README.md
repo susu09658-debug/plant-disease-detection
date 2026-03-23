@@ -18,17 +18,17 @@
 
 ## 三、功能模块
 
-- **登录注册**：用户名+密码+图形验证码登录，PBKDF2 加密存储密码
-- **忘记密码**：通过用户名+手机号+验证码重置密码
+- **登录注册**：用户ID+密码+图形验证码登录，用户可自定义昵称，PBKDF2 加密存储密码
+- **忘记密码**：通过用户ID+手机号+验证码重置密码
 - **JWT 认证**：安全的 Token 认证，7天有效期，自动续期
 - **系统首页**：检测统计卡片 + 近7天趋势图 + 病害分布图 + 模型状态
 - **病害检测**：拖拽上传图片，调用 YOLOv11 推理，展示标注结果及检测框详情，支持选择不同模型进行检测
 - **历史记录**：分页列表，支持搜索、单条/批量删除，查看详情
 - **知识库**：病害知识卡片展示，支持按植物/病害名搜索，点击查看详情
 - **数据集管理**（新增）：PlantDoc 数据集概览、类别分布、划分统计、数据集准备指南
-- **模型训练管理**（新增）：训练配置参考、YOLOv11 模型选项、多种训练策略（基线/增强/微调/轻量化）、历史训练记录、论文实验设计建议
+- **模型训练管理**（新增）：训练配置参考、YOLOv11 模型选项、多种训练策略（基线/增强/微调/轻量化/论文优化）、历史训练记录、论文实验设计建议
 - **实验结果**：展示模型训练曲线（损失/mAP/Precision/Recall）、评估指标、各类别 AP、实验设计说明
-- **个人中心**：查看/修改个人信息、自定义头像上传、修改用户名、修改密码
+- **个人中心**：查看/修改个人信息、自定义头像上传、修改昵称、修改密码
 - **管理后台**（管理员专属）：用户管理、知识库管理、数据集管理、模型训练管理（基于权限类控制）
 - **管理员创建**：通过 `python manage.py create_admin` 命令行创建管理员用户
 
@@ -77,7 +77,8 @@ plant-disease-detection/
 │       ├── strategy_baseline.yaml    # 基线训练策略
 │       ├── strategy_augment.yaml     # 数据增强策略
 │       ├── strategy_finetune.yaml    # 微调训练策略
-│       └── strategy_lightweight.yaml # 轻量化部署策略
+│       ├── strategy_lightweight.yaml # 轻量化部署策略
+│       └── strategy_thesis.yaml      # 论文优化策略
 ├── datasets/                # 数据集存放目录
 │   └── plant_disease/       # YOLO 格式数据集
 ├── model/                   # 部署用权重文件（best.pt）
@@ -168,6 +169,7 @@ python yolo/train.py --strategy baseline      # 基线策略
 python yolo/train.py --strategy augment       # 增强数据增强策略
 python yolo/train.py --strategy finetune      # 大模型微调策略
 python yolo/train.py --strategy lightweight   # 轻量化部署策略
+python yolo/train.py --strategy thesis        # 论文优化策略（综合最佳实践）
 
 # 评估模型
 python yolo/evaluate.py --split test --save-json
