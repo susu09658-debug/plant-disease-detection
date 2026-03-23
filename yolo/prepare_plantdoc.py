@@ -38,7 +38,7 @@ DATASET_DIR = ROOT / 'datasets' / 'plant_disease'
 # Windows 默认 MAX_PATH = 260，留 20 字符余量
 _MAX_SAFE_PATH = 240
 
-# PlantDoc 类别定义（30 个类别，与 data.yaml 保持一致）
+# PlantDoc 类别定义（29 个类别，与 data.yaml 保持一致）
 PLANTDOC_CLASSES = [
     'Apple_Scab_Leaf',
     'Apple_leaf',
@@ -52,7 +52,6 @@ PLANTDOC_CLASSES = [
     'Corn_rust_leaf',
     'Grape_leaf',
     'Grape_leaf_black_rot',
-    'Grape_leaf_blight',
     'Peach_leaf',
     'Potato_leaf',
     'Potato_leaf_early_blight',
@@ -91,7 +90,6 @@ CLASS_ALIASES = {
     'grape leaf black rot': 'Grape_leaf_black_rot',
     'Grape leaf': 'Grape_leaf',
     'grape leaf': 'Grape_leaf',
-    'Grape leaf blight': 'Grape_leaf_blight',
     'Peach leaf': 'Peach_leaf',
     'Potato leaf': 'Potato_leaf',
     'Potato leaf early blight': 'Potato_leaf_early_blight',
