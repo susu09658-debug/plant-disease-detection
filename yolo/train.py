@@ -11,7 +11,16 @@ Plant Disease Detection - Model Training Script (YOLOv11 + PlantDoc)
     python yolo/train.py --strategy augment        # 使用数据增强策略
     python yolo/train.py --strategy finetune       # 使用微调策略
     python yolo/train.py --strategy lightweight    # 使用轻量化部署策略
-    python yolo/train.py --strategy thesis         # 使用论文优化策略
+    python yolo/train.py --strategy thesis         # 使用论文深度优化策略 (推荐)
+
+训练策略说明:
+    baseline    - 基线对照组 (YOLOv11n, SGD, 150 epochs)
+    augment     - 数据增强验证 (YOLOv11n, SGD, 200 epochs)
+    finetune    - 大模型微调 (YOLOv11s, AdamW, 250 epochs)
+    lightweight - 轻量化部署 (YOLOv11n, Adam, 150 epochs, imgsz=416)
+    thesis      - 论文深度优化 (YOLOv11m, AdamW, 300 epochs, imgsz=800)
+                  综合 10 项核心优化: 高分辨率 + close_mosaic + 长预热 +
+                  梯度累积 + 混合精度 + 渐进增强 + 损失权重调优等
 
 训练完成后，最优权重保存在: runs/train/<name>/weights/best.pt
 可将 best.pt 复制到 model/ 目录供系统推理使用。
@@ -55,7 +64,7 @@ def parse_args():
     # 策略参数
     parser.add_argument('--strategy', type=str, default=None,
                         choices=list(STRATEGY_MAP.keys()),
-                        help='预定义训练策略 (baseline/augment/finetune/lightweight)')
+                        help='预定义训练策略 (baseline/augment/finetune/lightweight/thesis)')
 
     # 模型参数
     parser.add_argument('--model', type=str, default=None,
@@ -176,14 +185,26 @@ def main():
         'resume': args.resume,
     }
 
-    # 从策略配置中加载额外的训练参数（数据增强等）
+    # 从策略配置中加载额外的训练参数（数据增强、学习率调度、高级训练技巧等）
     extra_keys = [
+        # 学习率与优化器
         'lrf', 'momentum', 'weight_decay',
         'warmup_epochs', 'warmup_momentum', 'warmup_bias_lr',
+        'cos_lr', 'nbs',
+        # 色彩增强
         'hsv_h', 'hsv_s', 'hsv_v',
-        'degrees', 'translate', 'scale',
-        'fliplr', 'flipud', 'mosaic', 'mixup',
-        'copy_paste', 'label_smoothing',
+        # 几何增强
+        'degrees', 'translate', 'scale', 'shear', 'perspective',
+        'fliplr', 'flipud',
+        # 高级增强
+        'mosaic', 'mixup', 'copy_paste', 'erasing',
+        'close_mosaic',
+        # 正则化
+        'label_smoothing',
+        # 训练技巧
+        'amp', 'rect', 'multi_scale',
+        # 损失权重
+        'box', 'cls', 'dfl',
     ]
     for key in extra_keys:
         if key in strategy_cfg:

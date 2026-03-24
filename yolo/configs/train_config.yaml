@@ -1,37 +1,66 @@
 # ============================================================
-# YOLOv11 训练超参数配置 (PlantDoc)
-# Training Hyperparameters Configuration
+# YOLOv11 训练超参数配置参考 (PlantDoc)
+# Training Hyperparameters Configuration Reference
 # ============================================================
 # 在论文中可以描述:
-#   "本文采用 YOLOv11n 模型对 PlantDoc 数据集进行植物病害检测，
+#   "本文采用 YOLOv11 模型对 PlantDoc 数据集进行植物病害检测，
 #    训练参数如下表所示..."
+#
+# 此文件为超参数参考文档，实际训练请使用策略配置文件:
+#   strategy_baseline.yaml   - 基线对照组
+#   strategy_augment.yaml    - 数据增强实验
+#   strategy_finetune.yaml   - 大模型微调
+#   strategy_lightweight.yaml - 轻量化部署
+#   strategy_thesis.yaml     - 论文深度优化 (推荐)
 # ============================================================
 
 # ---- 基本训练参数 ----
 model: yolo11n.pt            # 预训练模型 (n/s/m/l/x 可选)
-epochs: 100                  # 训练轮数
-batch: 16                    # 批次大小 (根据 GPU 显存调整)
-imgsz: 640                   # 输入图片尺寸
+epochs: 100                  # 训练轮数 (小数据集建议 150-300)
+batch: 16                    # 批次大小 (根据 GPU 显存和 imgsz 调整)
+imgsz: 640                   # 输入图片尺寸 (640/800/1024 可选)
 patience: 20                 # 早停轮数 (验证集指标不再提升时)
 
 # ---- 优化器参数 ----
 optimizer: SGD               # 优化器 (SGD / Adam / AdamW)
-lr0: 0.01                    # 初始学习率
-lrf: 0.01                    # 最终学习率 (lr0 * lrf)
-momentum: 0.937              # SGD 动量
-weight_decay: 0.0005         # 权重衰减
+lr0: 0.01                    # 初始学习率 (AdamW 建议 0.0005~0.001)
+lrf: 0.01                    # 最终学习率比例 (lr_final = lr0 * lrf)
+cos_lr: false                # 是否使用余弦退火调度 (推荐 true)
+momentum: 0.937              # SGD/Adam 动量
+weight_decay: 0.0005         # 权重衰减 (AdamW 建议 0.01~0.02)
+
+# ---- 学习率预热 ----
+warmup_epochs: 3.0           # 预热轮数 (建议 3~10)
+warmup_momentum: 0.8         # 预热起始动量
+warmup_bias_lr: 0.1          # 预热偏置学习率
+
+# ---- 梯度累积与精度 ----
+nbs: 64                      # 名义 batch size (自动梯度累积)
+amp: true                    # 混合精度训练 (FP16)
 
 # ---- 数据增强参数 ----
 hsv_h: 0.015                 # HSV 色调增强
 hsv_s: 0.7                   # HSV 饱和度增强
 hsv_v: 0.4                   # HSV 亮度增强
-degrees: 0.0                 # 旋转角度
+degrees: 0.0                 # 旋转角度 (植物图像建议 10~15)
 translate: 0.1               # 平移比例
 scale: 0.5                   # 缩放比例
+shear: 0.0                   # 剪切变换 (建议 0~2.0)
 fliplr: 0.5                  # 水平翻转概率
-flipud: 0.0                  # 垂直翻转概率
-mosaic: 1.0                  # 马赛克增强概率
-mixup: 0.0                   # MixUp 增强概率
+flipud: 0.0                  # 垂直翻转概率 (叶片图像可设 0.1~0.15)
+mosaic: 1.0                  # Mosaic 增强概率
+close_mosaic: 10             # 最后 N 轮关闭 Mosaic (关键优化，建议 10~20)
+mixup: 0.0                   # MixUp 增强概率 (建议 0.1~0.2)
+copy_paste: 0.0              # CopyPaste 增强概率 (建议 0.1~0.15)
+erasing: 0.0                 # 随机擦除概率 (建议 0.2~0.3)
+
+# ---- 正则化 ----
+label_smoothing: 0.0         # 标签平滑 (建议 0.05~0.1)
+
+# ---- 损失函数权重 ----
+box: 7.5                     # 边框回归损失权重 (默认 7.5)
+cls: 0.5                     # 分类损失权重 (默认 0.5)
+dfl: 1.5                     # 分布式焦点损失权重 (默认 1.5)
 
 # ---- 输出与保存 ----
 project: runs/train          # 训练结果保存目录

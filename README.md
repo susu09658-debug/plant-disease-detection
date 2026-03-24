@@ -158,25 +158,36 @@ python yolo/prepare_plantdoc.py --validate
 ### 模型训练
 
 ```bash
-# 使用 YOLOv11 训练（默认 yolo11n.pt, 100 epochs）
-python yolo/train.py
-
-# 使用更大模型
-python yolo/train.py --model yolo11s.pt --epochs 150
+# 使用论文深度优化策略 (推荐, RTX 4090 约 3 小时)
+python yolo/train.py --strategy thesis
 
 # 使用预定义训练策略（适合毕业论文对比实验）
-python yolo/train.py --strategy baseline      # 基线策略
+python yolo/train.py --strategy baseline      # 基线策略 (对照组)
 python yolo/train.py --strategy augment       # 增强数据增强策略
 python yolo/train.py --strategy finetune      # 大模型微调策略
 python yolo/train.py --strategy lightweight   # 轻量化部署策略
-python yolo/train.py --strategy thesis        # 论文优化策略（综合最佳实践）
+python yolo/train.py --strategy thesis        # 论文深度优化策略（综合最佳实践）
+
+# 自定义训练参数
+python yolo/train.py --model yolo11s.pt --epochs 200
+python yolo/train.py --strategy thesis --device 0  # 指定 GPU
 
 # 评估模型
 python yolo/evaluate.py --split test --save-json
 
 # 部署到系统
-cp runs/train/plant_disease/weights/best.pt model/best.pt
+cp runs/train/thesis_optimized/weights/best.pt model/best.pt
 ```
+
+#### 训练策略对比
+
+| 策略 | 模型 | Epochs | 图像尺寸 | 优化器 | 适用场景 | 预期 mAP50 |
+|------|------|--------|---------|--------|---------|-----------|
+| baseline | YOLOv11n | 150 | 640 | SGD | 对照基准 | ~0.55 |
+| augment | YOLOv11n | 200 | 640 | SGD | 增强实验 | ~0.58 |
+| finetune | YOLOv11s | 250 | 640 | AdamW | 高精度 | ~0.63 |
+| lightweight | YOLOv11n | 150 | 416 | Adam | 边缘部署 | ~0.48 |
+| **thesis** | **YOLOv11m** | **300** | **800** | **AdamW** | **论文最优** | **0.70+** |
 
 详细训练指南请参考 [yolo/README.md](yolo/README.md)
 
