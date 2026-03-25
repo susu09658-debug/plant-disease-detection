@@ -4,11 +4,18 @@ Unified Plant Disease Dataset Preparation Tool
 
 支持多种数据集格式的自动检测、转换与划分:
   - FieldPlant (Roboflow YOLO 格式，预划分 train/valid/test)
+  - FieldPlant (仅 train/ 目录时自动按比例划分为 train/val/test)
   - PlantDoc  (DatasetNinja Supervisely JSON / Pascal VOC XML 格式)
 
 使用说明:
-    # FieldPlant 数据集 (YOLO 格式，已包含 train/valid/test 划分)
+    # FieldPlant 数据集 (YOLO 格式，完整 train/valid/test 划分)
     python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11 --dataset fieldplant
+
+    # FieldPlant 数据集 (仅有 train/ 目录，自动按 80/10/10 划分)
+    python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11 --dataset fieldplant
+
+    # 自定义划分比例 (仅 train/ 目录时生效)
+    python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11 --train-ratio 0.8 --val-ratio 0.1
 
     # PlantDoc 数据集 (Supervisely JSON 格式)
     python yolo/prepare_dataset.py --source /path/to/plantdoc_raw --dataset plantdoc
@@ -233,20 +240,23 @@ def _is_roboflow_yolo(source):
 # FieldPlant 数据集处理 (YOLO 格式)
 # ============================================================
 
-def convert_fieldplant(source_dir):
+def convert_fieldplant(source_dir, train_ratio=0.8, val_ratio=0.1):
     """
     将 FieldPlant (Roboflow YOLO 格式) 数据集复制到统一目录结构。
 
-    Roboflow 导出的 YOLO 格式已经包含:
-      - train/images/, train/labels/
-      - valid/images/, valid/labels/  (注意 Roboflow 使用 'valid' 而非 'val')
-      - test/images/, test/labels/
+    支持两种场景:
+      1. 完整划分: 同时存在 train/ + (valid|val)/ + test/ 目录
+         → 直接复制到 datasets/plant_disease/{train,val,test}/
+      2. 仅有 train/: 只解压了 train/ 目录 (仅含 images/ 和 labels/)
+         → 自动按 train_ratio/val_ratio 随机划分为 train/val/test
 
-    标注格式已为 YOLO TXT (class_id cx cy w h)，无需格式转换，
-    仅需复制到统一目录 datasets/plant_disease/ 下。
+    Roboflow 导出的 YOLO 格式标注已经是 (class_id cx cy w h)，
+    无需格式转换。
 
     Args:
         source_dir: FieldPlant 数据集根目录
+        train_ratio: 训练集比例 (仅在自动划分时使用，默认 0.8)
+        val_ratio: 验证集比例 (仅在自动划分时使用，默认 0.1)
     """
     source = Path(source_dir)
     if not source.exists():
@@ -255,6 +265,18 @@ def convert_fieldplant(source_dir):
 
     setup_directories()
 
+    # 检测是否需要自动划分:
+    # 仅当 train/ 存在且 valid/val/ 和 test/ 都不存在时自动划分
+    has_train = (source / 'train').is_dir()
+    has_val = (source / 'valid').is_dir() or (source / 'val').is_dir()
+    has_test = (source / 'test').is_dir()
+
+    if has_train and not has_val and not has_test:
+        print('  检测到仅有 train/ 目录，将自动划分为 train/val/test')
+        _fieldplant_auto_split(source / 'train', train_ratio, val_ratio)
+        return
+
+    # 完整划分模式: 直接复制各目录
     # Roboflow 目录名映射: valid -> val
     split_map = {
         'train': ['train'],
@@ -279,54 +301,186 @@ def convert_fieldplant(source_dir):
             split_counts[target_split] = 0
             continue
 
-        src_img_dir = src_split_dir / 'images'
-        src_lbl_dir = src_split_dir / 'labels'
-
-        if not src_img_dir.is_dir():
-            print(f'  警告: {src_split_dir}/images/ 目录不存在，跳过')
-            split_counts[target_split] = 0
-            continue
-
-        dst_img_dir = DATASET_DIR / 'images' / target_split
-        dst_lbl_dir = DATASET_DIR / 'labels' / target_split
-
-        count = 0
-        for ext in ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.JPG', '*.JPEG', '*.PNG']:
-            for img_path in src_img_dir.glob(ext):
-                # 复制图片
-                dst_img = _safe_copy_image(img_path, dst_img_dir)
-                if dst_img is None:
-                    continue
-
-                # 复制对应标注文件
-                lbl_name = img_path.stem + '.txt'
-                src_lbl = src_lbl_dir / lbl_name
-                if src_lbl.exists():
-                    dst_lbl = dst_lbl_dir / (dst_img.stem + '.txt')
-                    try:
-                        shutil.copy2(src_lbl, dst_lbl)
-                    except (OSError, shutil.Error) as e:
-                        print(f'  警告: 复制标注失败 {lbl_name}: {e}')
-                        continue
-
-                    # 统计类别分布
-                    with open(src_lbl) as f:
-                        for line in f:
-                            parts = line.strip().split()
-                            if len(parts) >= 5:
-                                try:
-                                    cid = int(parts[0])
-                                    if 0 <= cid < len(FIELDPLANT_CLASSES):
-                                        stats[FIELDPLANT_CLASSES[cid]] += 1
-                                except ValueError:
-                                    pass
-
-                count += 1
-
+        count = _copy_yolo_split(src_split_dir, target_split, stats)
         split_counts[target_split] = count
         print(f'  {target_split}: 已复制 {count} 张图片')
 
-    # 输出转换统计
+    _print_fieldplant_stats(split_counts, stats)
+
+
+def _collect_yolo_pairs(split_dir):
+    """
+    收集 YOLO 格式目录中的 (图片路径, 标注路径) 对。
+
+    Args:
+        split_dir: 包含 images/ 和 labels/ 子目录的划分目录
+
+    Returns:
+        list: [(img_path, lbl_path), ...] 图片-标注对列表（已去重）
+    """
+    img_dir = split_dir / 'images'
+    lbl_dir = split_dir / 'labels'
+    if not img_dir.is_dir():
+        return []
+
+    pairs = []
+    seen = set()
+    for ext in ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.JPG', '*.JPEG', '*.PNG']:
+        for img_path in img_dir.glob(ext):
+            img_key = img_path.resolve()
+            if img_key in seen:
+                continue
+            seen.add(img_key)
+            lbl_path = lbl_dir / (img_path.stem + '.txt')
+            # 保留有标注的图片-标注对
+            if lbl_path.exists():
+                pairs.append((img_path, lbl_path))
+    return pairs
+
+
+def _copy_yolo_split(src_split_dir, target_split, stats):
+    """
+    复制一个 YOLO 格式划分目录到目标位置。
+
+    Args:
+        src_split_dir: 源划分目录 (包含 images/ 和 labels/)
+        target_split: 目标划分名 ('train', 'val', 'test')
+        stats: Counter 对象，用于统计类别分布
+
+    Returns:
+        int: 成功复制的图片数量
+    """
+    src_img_dir = src_split_dir / 'images'
+    src_lbl_dir = src_split_dir / 'labels'
+
+    if not src_img_dir.is_dir():
+        print(f'  警告: {src_split_dir}/images/ 目录不存在，跳过')
+        return 0
+
+    dst_img_dir = DATASET_DIR / 'images' / target_split
+    dst_lbl_dir = DATASET_DIR / 'labels' / target_split
+
+    count = 0
+    for ext in ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.JPG', '*.JPEG', '*.PNG']:
+        for img_path in src_img_dir.glob(ext):
+            # 复制图片
+            dst_img = _safe_copy_image(img_path, dst_img_dir)
+            if dst_img is None:
+                continue
+
+            # 复制对应标注文件
+            lbl_name = img_path.stem + '.txt'
+            src_lbl = src_lbl_dir / lbl_name
+            if src_lbl.exists():
+                dst_lbl = dst_lbl_dir / (dst_img.stem + '.txt')
+                try:
+                    shutil.copy2(src_lbl, dst_lbl)
+                except (OSError, shutil.Error) as e:
+                    print(f'  警告: 复制标注失败 {lbl_name}: {e}')
+                    continue
+
+                _count_yolo_classes(src_lbl, stats)
+
+            count += 1
+
+    return count
+
+
+def _copy_yolo_pair(img_path, lbl_path, target_split, stats):
+    """
+    复制单个图片-标注对到目标划分。
+
+    Args:
+        img_path: 源图片路径
+        lbl_path: 源标注路径
+        target_split: 目标划分名 ('train', 'val', 'test')
+        stats: Counter 对象
+
+    Returns:
+        bool: 是否成功
+    """
+    dst_img_dir = DATASET_DIR / 'images' / target_split
+    dst_lbl_dir = DATASET_DIR / 'labels' / target_split
+
+    dst_img = _safe_copy_image(img_path, dst_img_dir)
+    if dst_img is None:
+        return False
+
+    dst_lbl = dst_lbl_dir / (dst_img.stem + '.txt')
+    try:
+        shutil.copy2(lbl_path, dst_lbl)
+    except (OSError, shutil.Error) as e:
+        print(f'  警告: 复制标注失败 {lbl_path.name}: {e}')
+        return False
+
+    _count_yolo_classes(lbl_path, stats)
+    return True
+
+
+def _count_yolo_classes(lbl_path, stats):
+    """统计标注文件中的类别分布"""
+    with open(lbl_path) as f:
+        for line in f:
+            parts = line.strip().split()
+            if len(parts) >= 5:
+                try:
+                    cid = int(parts[0])
+                    if 0 <= cid < len(FIELDPLANT_CLASSES):
+                        stats[FIELDPLANT_CLASSES[cid]] += 1
+                except ValueError:
+                    pass
+
+
+def _fieldplant_auto_split(train_dir, train_ratio=0.8, val_ratio=0.1):
+    """
+    当仅有 train/ 目录时，自动将数据划分为 train/val/test。
+
+    随机打乱后按 train_ratio : val_ratio : (1-train_ratio-val_ratio) 比例划分。
+
+    Args:
+        train_dir: 源 train/ 目录 (包含 images/ 和 labels/)
+        train_ratio: 训练集比例 (默认 0.8)
+        val_ratio: 验证集比例 (默认 0.1)
+    """
+    pairs = _collect_yolo_pairs(train_dir)
+    print(f'  找到 {len(pairs)} 对图片-标注')
+
+    if not pairs:
+        print('  警告: 没有找到 YOLO 格式的图片-标注对')
+        print('  请确保目录结构为: train/images/ + train/labels/')
+        return
+
+    # 随机打乱
+    random.seed(42)
+    random.shuffle(pairs)
+
+    # 按比例划分
+    n_total = len(pairs)
+    n_train = int(n_total * train_ratio)
+    n_val = int(n_total * val_ratio)
+
+    splits = {
+        'train': pairs[:n_train],
+        'val': pairs[n_train:n_train + n_val],
+        'test': pairs[n_train + n_val:],
+    }
+
+    stats = Counter()
+    split_counts = {}
+
+    for split_name, split_pairs in splits.items():
+        count = 0
+        for img_path, lbl_path in split_pairs:
+            if _copy_yolo_pair(img_path, lbl_path, split_name, stats):
+                count += 1
+        split_counts[split_name] = count
+        print(f'  {split_name}: 已复制 {count} 张图片')
+
+    _print_fieldplant_stats(split_counts, stats)
+
+
+def _print_fieldplant_stats(split_counts, stats):
+    """输出 FieldPlant 数据集转换统计信息"""
     print('\n' + '=' * 50)
     print('  FieldPlant 数据集准备完成!')
     print('=' * 50)
@@ -866,9 +1020,9 @@ def parse_args():
     parser.add_argument('--validate', action='store_true',
                         help='验证现有数据集')
     parser.add_argument('--train-ratio', type=float, default=0.8,
-                        help='训练集比例 (仅 PlantDoc 无预划分时使用)')
+                        help='训练集比例 (仅在自动划分时使用，默认 0.8)')
     parser.add_argument('--val-ratio', type=float, default=0.1,
-                        help='验证集比例')
+                        help='验证集比例 (仅在自动划分时使用，默认 0.1)')
     parser.add_argument('--info', action='store_true',
                         help='显示数据集类别信息')
     return parser.parse_args()
@@ -913,7 +1067,7 @@ def main():
         print(f'  源目录: {source}')
 
         if ds_type == 'fieldplant':
-            convert_fieldplant(source)
+            convert_fieldplant(source, args.train_ratio, args.val_ratio)
         else:
             convert_plantdoc(source, args.train_ratio, args.val_ratio)
 
@@ -928,8 +1082,14 @@ def main():
     print('  PlantDoc   - DatasetNinja Supervisely/VOC 格式 (29 类)')
     print()
     print('用法:')
-    print('  # FieldPlant 数据集 (YOLO 格式)')
+    print('  # FieldPlant 数据集 (完整 train/valid/test)')
     print('  python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11')
+    print()
+    print('  # FieldPlant 数据集 (仅有 train/ 目录，自动按 80/10/10 划分)')
+    print('  python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11')
+    print()
+    print('  # 自定义划分比例')
+    print('  python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11 --train-ratio 0.8 --val-ratio 0.1')
     print()
     print('  # PlantDoc 数据集 (Supervisely 格式)')
     print('  python yolo/prepare_dataset.py --source /path/to/plantdoc_raw --dataset plantdoc')
