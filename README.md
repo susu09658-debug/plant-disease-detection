@@ -2,7 +2,7 @@
 
 ## 一、项目简介
 
-本项目为本科毕业设计，采用前后端分离架构，集成 YOLOv11 目标检测模型，实现植物叶片病害的智能识别与管理。系统使用 DatasetNinja 上的 PlantDoc 数据集进行模型训练，包含完整的数据集管理、模型训练、评估、部署和可视化流程，可作为毕业论文的实验验证平台。
+本项目为本科毕业设计，采用前后端分离架构，集成 YOLOv11 目标检测模型，实现植物叶片病害的智能识别与管理。系统使用 Roboflow 上的 FieldPlant 数据集进行模型训练，包含 27 个类别（木薯 5 类 + 玉米 16 类 + 番茄 6 类），具备完整的数据集管理、模型训练、评估、部署和可视化流程，可作为毕业论文的实验验证平台。
 
 ## 二、技术栈
 
@@ -12,7 +12,7 @@
 | 后端      | Django 6.0.3 + Django REST Framework 3.16.1      |
 | 认证      | JWT（PyJWT 2.12.1）                               |
 | AI 模型   | YOLOv11（ultralytics）                            |
-| 数据集    | PlantDoc（DatasetNinja, 29 类植物病害）             |
+| 数据集    | FieldPlant（Roboflow, 27 类植物病害）               |
 | 数据库    | MySQL 8.0                                       |
 | 跨域      | django-cors-headers 4.9.0                        |
 
@@ -25,7 +25,7 @@
 - **病害检测**：拖拽上传图片，调用 YOLOv11 推理，展示标注结果及检测框详情，支持选择不同模型进行检测
 - **历史记录**：分页列表，支持搜索、单条/批量删除，查看详情
 - **知识库**：病害知识卡片展示，支持按植物/病害名搜索，点击查看详情
-- **数据集管理**（新增）：PlantDoc 数据集概览、类别分布、划分统计、数据集准备指南
+- **数据集管理**（新增）：FieldPlant 数据集概览、类别分布、划分统计、数据集准备指南
 - **模型训练管理**（新增）：训练配置参考、YOLOv11 模型选项、多种训练策略（基线/增强/微调/轻量化/论文优化）、历史训练记录、论文实验设计建议
 - **实验结果**：展示模型训练曲线（损失/mAP/Precision/Recall）、评估指标、各类别 AP、实验设计说明
 - **个人中心**：查看/修改个人信息、自定义头像上传、修改昵称、修改密码
@@ -70,9 +70,10 @@ plant-disease-detection/
 │   ├── evaluate.py          # 模型评估脚本（生成论文指标）
 │   ├── predict.py           # 推理脚本
 │   ├── export_model.py      # 模型导出
-│   ├── prepare_plantdoc.py  # PlantDoc 数据集准备脚本（新增）
+│   ├── prepare_plantdoc.py  # PlantDoc 数据集准备脚本（兼容保留）
+│   ├── prepare_dataset.py   # 统一数据集准备脚本（支持 FieldPlant / PlantDoc）
 │   └── configs/             # 数据集与训练配置
-│       ├── data.yaml              # PlantDoc 29 类数据集配置
+│       ├── data.yaml              # FieldPlant 27 类数据集配置
 │       ├── train_config.yaml     # YOLOv11 训练超参数
 │       ├── strategy_baseline.yaml    # 基线训练策略
 │       ├── strategy_augment.yaml     # 数据增强策略
@@ -129,31 +130,40 @@ npm run dev
 
 可以在 `model/` 目录下放置多个 `.pt` 模型文件（如 `best.pt`、`yolo11n.pt`、`yolo11s.pt`），在病害检测页面可以选择不同的模型进行检测。
 
-### 数据集准备（PlantDoc）
+### 数据集准备（FieldPlant）
 
 ```bash
-# 从 DatasetNinja 网站下载 PlantDoc 数据集（Supervisely 格式）:
-#   https://datasetninja.com/plantdoc
+# FieldPlant 数据集 (Roboflow YOLO 格式, 已包含 train/valid/test 划分):
+#   从 Roboflow 下载 FieldPlant v11 数据集（YOLO 格式导出）:
+#   https://universe.roboflow.com/plant-disease-detection/fieldplant/dataset/11
+#
 # 解压后目录结构为:
-#   plantdoc-DatasetNinja/
+#   FieldPlant.v11-fieldplant_dataset.yolov11/
+#   ├── data.yaml
 #   ├── train/
-#   │   ├── img/   # 训练图片 (2251张)
-#   │   └── ann/   # JSON 标注文件
+#   │   ├── images/
+#   │   └── labels/
+#   ├── valid/
+#   │   ├── images/
+#   │   └── labels/
 #   └── test/
-#       ├── img/   # 测试图片 (231张)
-#       └── ann/   # JSON 标注文件
+#       ├── images/
+#       └── labels/
 
-# 将数据集转换为 YOLO 格式（自动检测预划分目录，从 train 拆分 val）
-python yolo/prepare_plantdoc.py --source /path/to/plantdoc-DatasetNinja
+# 准备 FieldPlant 数据集（自动检测格式）
+python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11
 
-# 也可以尝试从 GitHub Releases 自动下载
-python yolo/prepare_plantdoc.py --download
+# 或显式指定数据集类型
+python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11 --dataset fieldplant
 
 # 验证数据集
-python yolo/prepare_plantdoc.py --validate
+python yolo/prepare_dataset.py --validate
+
+# 查看类别信息
+python yolo/prepare_dataset.py --info
 ```
 
-> **注意**: `dataset-ninja` 包不在公共 PyPI 上，请从 https://datasetninja.com/plantdoc 手动下载数据集后使用 `--source` 参数指定路径。
+> **兼容 PlantDoc**: 如需使用旧版 PlantDoc 数据集，可运行 `python yolo/prepare_dataset.py --source /path/to/plantdoc_raw --dataset plantdoc`。
 
 ### 模型训练
 
@@ -183,35 +193,26 @@ cp runs/train/thesis_optimized/weights/best.pt model/best.pt
 
 | 策略 | 模型 | Epochs | 图像尺寸 | 优化器 | 适用场景 | 预期 mAP50 |
 |------|------|--------|---------|--------|---------|-----------|
-| baseline | YOLOv11n | 150 | 640 | SGD | 对照基准 | ~0.55 |
-| augment | YOLOv11n | 200 | 640 | SGD | 增强实验 | ~0.58 |
-| finetune | YOLOv11s | 250 | 640 | AdamW | 高精度 | ~0.63 |
-| lightweight | YOLOv11n | 150 | 416 | Adam | 边缘部署 | ~0.48 |
-| **thesis** | **YOLOv11m** | **300** | **800** | **AdamW** | **论文最优** | **0.70+** |
+| baseline | YOLOv11n | 150 | 640 | SGD | 对照基准 | ~0.60 |
+| augment | YOLOv11n | 200 | 640 | SGD | 增强实验 | ~0.65 |
+| finetune | YOLOv11s | 250 | 640 | AdamW | 高精度 | ~0.70 |
+| lightweight | YOLOv11n | 150 | 416 | Adam | 边缘部署 | ~0.52 |
+| **thesis** | **YOLOv11m** | **300** | **640** | **AdamW** | **论文最优** | **0.75+** |
 
 详细训练指南请参考 [yolo/README.md](yolo/README.md)
 
-## 六、PlantDoc 数据集
+## 六、FieldPlant 数据集
 
-本项目使用 DatasetNinja 上的 **PlantDoc** 数据集，包含 29 个类别：
+本项目使用 Roboflow 上的 **FieldPlant** 数据集 (v11)，包含 27 个类别，涵盖 3 种作物：
 
 | 植物 | 病害类别 |
 |------|---------|
-| 苹果 | 黑星病叶、健康叶、锈病叶 |
-| 甜椒 | 叶斑病、健康叶 |
-| 蓝莓 | 健康叶 |
-| 樱桃 | 健康叶 |
-| 玉米 | 灰斑病、叶枯病、锈病叶 |
-| 葡萄 | 黑腐病叶、健康叶 |
-| 桃树 | 健康叶 |
-| 马铃薯 | 健康叶、早疫病叶、晚疫病叶 |
-| 覆盆子 | 健康叶 |
-| 大豆 | 健康叶 |
-| 南瓜 | 白粉病叶 |
-| 草莓 | 健康叶 |
-| 番茄 | 早疫病叶、叶斑病、健康叶、细菌性斑点病叶、晚疫病叶、花叶病毒叶、黄化曲叶病毒叶、霉病叶、二斑叶螨叶 |
+| 木薯 | 细菌性枯萎病、褐斑病、健康、花叶病、根腐病 |
+| 玉米 | 褐斑病、炭疽病、褪绿叶斑病、灰斑病、健康、虫害、霉病、紫色变色、黑穗病、条纹病、条斑病、紫罗兰变色、黄斑病、黄化病、叶枯病、锈病叶 |
+| 番茄 | 褐斑病、细菌性萎蔫病、疫病叶、健康、花叶病毒、黄化曲叶病毒 |
 
-数据集来源：https://datasetninja.com/plantdoc
+数据集来源：https://universe.roboflow.com/plant-disease-detection/fieldplant/dataset/11
+许可证：CC BY 4.0
 
 ## 七、API 接口
 

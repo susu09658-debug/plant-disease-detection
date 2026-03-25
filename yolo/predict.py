@@ -1,6 +1,6 @@
 """
 YOLOv11 植物病害检测 - 单张图片推理脚本
-Plant Disease Detection - Single Image Prediction (YOLOv11 + PlantDoc)
+Plant Disease Detection - Single Image Prediction (YOLOv11 + FieldPlant)
 
 使用说明:
     python yolo/predict.py --source path/to/image.jpg
@@ -55,7 +55,7 @@ def main():
         sys.exit(1)
 
     print('=' * 60)
-    print('  YOLOv11 植物病害检测推理 (PlantDoc)')
+    print('  YOLOv11 植物病害检测推理 (FieldPlant)')
     print('=' * 60)
     print(f'  模型:   {args.model}')
     print(f'  输入:   {args.source}')

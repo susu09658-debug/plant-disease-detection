@@ -1,6 +1,6 @@
 """
 YOLOv11 植物病害检测 - 模型训练脚本
-Plant Disease Detection - Model Training Script (YOLOv11 + PlantDoc)
+Plant Disease Detection - Model Training Script (YOLOv11 + FieldPlant)
 
 使用说明:
     python yolo/train.py                           # 使用默认参数训练
@@ -18,8 +18,8 @@ Plant Disease Detection - Model Training Script (YOLOv11 + PlantDoc)
     augment     - 数据增强验证 (YOLOv11n, SGD, 200 epochs)
     finetune    - 大模型微调 (YOLOv11s, AdamW, 250 epochs)
     lightweight - 轻量化部署 (YOLOv11n, Adam, 150 epochs, imgsz=416)
-    thesis      - 论文深度优化 (YOLOv11m, AdamW, 300 epochs, imgsz=800)
-                  综合 10 项核心优化: 高分辨率 + close_mosaic + 长预热 +
+    thesis      - 论文深度优化 (YOLOv11m, AdamW, 300 epochs, imgsz=640)
+                  针对 FieldPlant 数据集特点优化: close_mosaic + 长预热 +
                   梯度累积 + 混合精度 + 渐进增强 + 损失权重调优等
 
 训练完成后，最优权重保存在: runs/train/<name>/weights/best.pt
@@ -145,7 +145,7 @@ def main():
         sys.exit(1)
 
     print('=' * 60)
-    print('  YOLOv11 植物病害检测模型训练 (PlantDoc)')
+    print('  YOLOv11 植物病害检测模型训练 (FieldPlant)')
     if args.strategy:
         print(f'  策略:     {args.strategy}')
     print('=' * 60)

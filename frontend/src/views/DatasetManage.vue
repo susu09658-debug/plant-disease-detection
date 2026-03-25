@@ -7,7 +7,7 @@
       <template #header>
         <div class="card-header-flex">
           <span class="card-title">📊 数据集概览</span>
-          <el-tag type="primary" size="small">PlantDoc</el-tag>
+          <el-tag type="primary" size="small">FieldPlant</el-tag>
         </div>
       </template>
       <el-row :gutter="16">
@@ -43,10 +43,10 @@
       <template #header><span class="card-title">ℹ️ 数据集信息</span></template>
       <el-descriptions :column="2" border>
         <el-descriptions-item label="数据集名称">
-          <el-tag type="primary">{{ overview.dataset_name || 'PlantDoc' }}</el-tag>
+          <el-tag type="primary">{{ overview.dataset_name || 'FieldPlant' }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="数据来源">{{ overview.dataset_source || 'DatasetNinja' }}</el-descriptions-item>
-        <el-descriptions-item label="类别数量">{{ overview.num_classes || 29 }} 类</el-descriptions-item>
+        <el-descriptions-item label="数据来源">{{ overview.dataset_source || 'Roboflow' }}</el-descriptions-item>
+        <el-descriptions-item label="类别数量">{{ overview.num_classes || 27 }} 类</el-descriptions-item>
         <el-descriptions-item label="数据集路径">
           <el-text size="small" type="info">{{ overview.dataset_path || '-' }}</el-text>
         </el-descriptions-item>
@@ -106,9 +106,9 @@
           <div>
             <p>数据集尚未准备，请按照以下步骤操作：</p>
             <ol style="text-align: left; padding-left: 20px; line-height: 2;">
-              <li>从 DatasetNinja 下载 PlantDoc 数据集</li>
-              <li>运行 <code>python yolo/prepare_plantdoc.py --source /path/to/data</code></li>
-              <li>或使用 <code>python yolo/prepare_plantdoc.py --download</code> 自动下载</li>
+              <li>从 Roboflow 下载 FieldPlant 数据集 (YOLO 格式)</li>
+              <li>运行 <code>python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11</code></li>
+              <li>或运行 <code>python yolo/prepare_dataset.py --validate</code> 验证已有数据集</li>
             </ol>
           </div>
         </template>
@@ -119,25 +119,24 @@
     <el-card shadow="never" class="section-card">
       <template #header><span class="card-title">📋 数据集准备指南</span></template>
       <div class="guide-content">
-        <h4>方式一：手动下载 PlantDoc</h4>
+        <h4>方式一：下载 FieldPlant 数据集</h4>
         <ol>
-          <li>访问 <a href="https://datasetninja.com/plantdoc" target="_blank">DatasetNinja PlantDoc Dataset</a></li>
-          <li>下载并解压到本地目录</li>
-          <li>运行转换脚本：<el-text tag="code">python yolo/prepare_plantdoc.py --source /path/to/plantdoc_raw</el-text></li>
+          <li>访问 <a href="https://universe.roboflow.com/plant-disease-detection/fieldplant/dataset/11" target="_blank">Roboflow FieldPlant v11 Dataset</a></li>
+          <li>选择 YOLO 格式导出并下载到本地</li>
+          <li>运行准备脚本：<el-text tag="code">python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11</el-text></li>
         </ol>
 
-        <h4>方式二：DatasetNinja CLI 自动下载</h4>
+        <h4>方式二：兼容 PlantDoc 数据集</h4>
         <ol>
-          <li>安装 dataset-ninja CLI：<el-text tag="code">pip install dataset-ninja</el-text></li>
-          <li>配置 API Key（参考 <a href="https://datasetninja.com" target="_blank">DatasetNinja 文档</a>）</li>
-          <li>运行：<el-text tag="code">python yolo/prepare_plantdoc.py --download</el-text></li>
+          <li>从 <a href="https://datasetninja.com/plantdoc" target="_blank">DatasetNinja</a> 下载 PlantDoc 数据集</li>
+          <li>运行：<el-text tag="code">python yolo/prepare_dataset.py --source /path/to/plantdoc_raw --dataset plantdoc</el-text></li>
         </ol>
 
         <h4>验证数据集</h4>
-        <p>准备完成后运行验证：<el-text tag="code">python yolo/prepare_plantdoc.py --validate</el-text></p>
+        <p>准备完成后运行验证：<el-text tag="code">python yolo/prepare_dataset.py --validate</el-text></p>
 
-        <h4>PlantDoc 数据集说明</h4>
-        <p>PlantDoc 是一个包含 29 类植物叶片病害的目标检测数据集，涵盖苹果、甜椒、蓝莓、樱桃、玉米、葡萄、桃树、马铃薯、覆盆子、大豆、南瓜、草莓和番茄等 13 种植物的健康与病害样本，适合用于植物病害目标检测模型的训练与评估。</p>
+        <h4>FieldPlant 数据集说明</h4>
+        <p>FieldPlant 是一个包含 27 类植物病害的目标检测数据集，涵盖木薯（5 类）、玉米（16 类）、番茄（6 类）三种作物的健康与病害样本。数据集采用 Roboflow YOLO 格式，标注质量高，适合用于植物病害目标检测模型的训练与评估。如果仅解压了 train/ 目录，工具会自动按 80/10/10 比例划分为 train/val/test 集。许可证：CC BY 4.0。</p>
       </div>
     </el-card>
   </div>

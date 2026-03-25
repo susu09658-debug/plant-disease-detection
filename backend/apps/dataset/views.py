@@ -123,8 +123,8 @@ class DatasetOverviewView(APIView):
             'msg': '查询成功',
             'data': {
                 'dataset_exists': dataset_exists,
-                'dataset_name': 'PlantDoc',
-                'dataset_source': 'DatasetNinja (datasetninja.com/plantdoc)',
+                'dataset_name': 'FieldPlant',
+                'dataset_source': 'Roboflow (universe.roboflow.com/plant-disease-detection/fieldplant)',
                 'num_classes': nc,
                 'total_images': total_images,
                 'total_labels': total_labels,

@@ -1,6 +1,6 @@
 """
 YOLOv11 植物病害检测 - 模型评估脚本
-Plant Disease Detection - Model Evaluation Script (YOLOv11 + PlantDoc)
+Plant Disease Detection - Model Evaluation Script (YOLOv11 + FieldPlant)
 
 使用说明:
     python yolo/evaluate.py                                    # 评估默认模型
@@ -61,7 +61,7 @@ def main():
         sys.exit(1)
 
     print('=' * 60)
-    print('  YOLOv11 植物病害检测模型评估 (PlantDoc)')
+    print('  YOLOv11 植物病害检测模型评估 (FieldPlant)')
     print('=' * 60)
     print(f'  模型:     {args.model}')
     print(f'  数据集:   {args.data}')
