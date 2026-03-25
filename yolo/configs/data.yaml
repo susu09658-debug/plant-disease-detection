@@ -1,14 +1,16 @@
 # ============================================================
-# 植物病害检测数据集配置文件 (YOLOv11 格式 - PlantDoc)
+# 植物病害检测数据集配置文件 (YOLOv11 格式 - FieldPlant)
 # Plant Disease Detection Dataset Configuration
 # ============================================================
-# 数据集来源: DatasetNinja PlantDoc Dataset
-# https://datasetninja.com/plantdoc
+# 数据集来源: Roboflow FieldPlant v11
+# https://universe.roboflow.com/plant-disease-detection/fieldplant/dataset/11
+# 许可证: CC BY 4.0
 #
 # 使用说明:
 #   1. 将数据集图片放入 datasets/plant_disease/images/{train,val,test}/
 #   2. 将对应标注文件放入 datasets/plant_disease/labels/{train,val,test}/
 #   3. 标注格式: YOLO TXT (class_id cx cy w h)，坐标归一化到 [0, 1]
+#   4. 使用 prepare_dataset.py 可自动完成上述步骤
 # ============================================================
 
 # 数据集根目录 (相对于项目根目录)
@@ -19,69 +21,65 @@ train: images/train
 val: images/val
 test: images/test
 
-# 类别数 (PlantDoc 数据集包含 29 个类别)
-nc: 29
+# 类别数 (FieldPlant 数据集包含 27 个类别: 木薯 5 类 + 玉米 16 类 + 番茄 6 类)
+nc: 27
 
-# 类别名称 (DatasetNinja PlantDoc 数据集类别定义)
+# 类别名称 (FieldPlant 数据集类别定义)
 names:
-  0: Apple_Scab_Leaf
-  1: Apple_leaf
-  2: Apple_rust_leaf
-  3: Bell_pepper_leaf
-  4: Bell_pepper_leaf_spot
-  5: Blueberry_leaf
-  6: Cherry_leaf
-  7: Corn_Gray_leaf_spot
-  8: Corn_leaf_blight
-  9: Corn_rust_leaf
-  10: Grape_leaf
-  11: Grape_leaf_black_rot
-  12: Peach_leaf
-  13: Potato_leaf
-  14: Potato_leaf_early_blight
-  15: Potato_leaf_late_blight
-  16: Raspberry_leaf
-  17: Soybean_leaf
-  18: Squash_Powdery_mildew_leaf
-  19: Strawberry_leaf
-  20: Tomato_Early_blight_leaf
-  21: Tomato_Septoria_leaf_spot
-  22: Tomato_leaf
-  23: Tomato_leaf_bacterial_spot
-  24: Tomato_leaf_late_blight
-  25: Tomato_leaf_mosaic_virus
-  26: Tomato_leaf_yellow_virus
-  27: Tomato_mold_leaf
-  28: Tomato_two_spotted_spider_mites_leaf
+  0: Cassava Bacterial Blight
+  1: Cassava Brown Leaf Spot
+  2: Cassava Healthy
+  3: Cassava Mosaic
+  4: Cassava Root Rot
+  5: Corn Brown Spots
+  6: Corn Charcoal
+  7: Corn Chlorotic Leaf Spot
+  8: Corn Gray leaf spot
+  9: Corn Healthy
+  10: Corn Insects Damages
+  11: Corn Mildew
+  12: Corn Purple Discoloration
+  13: Corn Smut
+  14: Corn Streak
+  15: Corn Stripe
+  16: Corn Violet Decoloration
+  17: Corn Yellow Spots
+  18: Corn Yellowing
+  19: Corn leaf blight
+  20: Corn rust leaf
+  21: Tomato Brown Spots
+  22: Tomato bacterial wilt
+  23: Tomato blight leaf
+  24: Tomato healthy
+  25: Tomato leaf mosaic virus
+  26: Tomato leaf yellow virus
 
 # 中英文类别映射 (供系统展示使用)
 names_cn:
-  0: 苹果黑星病叶
-  1: 苹果健康叶
-  2: 苹果锈病叶
-  3: 甜椒健康叶
-  4: 甜椒叶斑病
-  5: 蓝莓健康叶
-  6: 樱桃健康叶
-  7: 玉米灰斑病
-  8: 玉米叶枯病
-  9: 玉米锈病叶
-  10: 葡萄健康叶
-  11: 葡萄黑腐病叶
-  12: 桃树健康叶
-  13: 马铃薯健康叶
-  14: 马铃薯早疫病叶
-  15: 马铃薯晚疫病叶
-  16: 覆盆子健康叶
-  17: 大豆健康叶
-  18: 南瓜白粉病叶
-  19: 草莓健康叶
-  20: 番茄早疫病叶
-  21: 番茄斑枯病叶
-  22: 番茄健康叶
-  23: 番茄细菌性斑点病叶
-  24: 番茄晚疫病叶
-  25: 番茄花叶病毒叶
-  26: 番茄黄化病毒叶
-  27: 番茄霉病叶
-  28: 番茄二斑叶螨叶
+  0: 木薯细菌性枯萎病
+  1: 木薯褐斑病
+  2: 木薯健康
+  3: 木薯花叶病
+  4: 木薯根腐病
+  5: 玉米褐斑病
+  6: 玉米炭疽病
+  7: 玉米褪绿叶斑病
+  8: 玉米灰斑病
+  9: 玉米健康
+  10: 玉米虫害
+  11: 玉米霉病
+  12: 玉米紫色变色
+  13: 玉米黑穗病
+  14: 玉米条纹病
+  15: 玉米条斑病
+  16: 玉米紫罗兰变色
+  17: 玉米黄斑病
+  18: 玉米黄化病
+  19: 玉米叶枯病
+  20: 玉米锈病叶
+  21: 番茄褐斑病
+  22: 番茄细菌性萎蔫病
+  23: 番茄疫病叶
+  24: 番茄健康
+  25: 番茄花叶病毒
+  26: 番茄黄化曲叶病毒
