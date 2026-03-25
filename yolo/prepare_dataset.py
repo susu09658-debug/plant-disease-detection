@@ -1042,6 +1042,14 @@ def main():
         validate_dataset(dataset_type)
         return
 
+    # 验证划分比例
+    if args.train_ratio + args.val_ratio > 1.0:
+        print(f'错误: train_ratio ({args.train_ratio}) + val_ratio ({args.val_ratio}) 不能超过 1.0')
+        sys.exit(1)
+    if args.train_ratio <= 0 or args.val_ratio < 0:
+        print(f'错误: train_ratio 必须 > 0，val_ratio 必须 >= 0')
+        sys.exit(1)
+
     if args.source:
         source = Path(args.source)
         if not source.exists():

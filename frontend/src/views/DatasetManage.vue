@@ -136,7 +136,7 @@
         <p>准备完成后运行验证：<el-text tag="code">python yolo/prepare_dataset.py --validate</el-text></p>
 
         <h4>FieldPlant 数据集说明</h4>
-        <p>FieldPlant 是一个包含 27 类植物病害的目标检测数据集，涵盖木薯（5 类）、玉米（16 类）、番茄（6 类）三种作物的健康与病害样本。数据集采用 Roboflow YOLO 格式，已预划分 train/valid/test，标注质量高，适合用于植物病害目标检测模型的训练与评估。许可证：CC BY 4.0。</p>
+        <p>FieldPlant 是一个包含 27 类植物病害的目标检测数据集，涵盖木薯（5 类）、玉米（16 类）、番茄（6 类）三种作物的健康与病害样本。数据集采用 Roboflow YOLO 格式，标注质量高，适合用于植物病害目标检测模型的训练与评估。如果仅解压了 train/ 目录，工具会自动按 80/10/10 比例划分为 train/val/test 集。许可证：CC BY 4.0。</p>
       </div>
     </el-card>
   </div>
