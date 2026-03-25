@@ -57,7 +57,7 @@
         </div>
         <div class="command-item">
           <div class="command-desc">部署模型到系统</div>
-          <el-text tag="code" class="command-code">cp runs/train/plant_disease/weights/best.pt model/best.pt</el-text>
+          <el-text tag="code" class="command-code">cp runs/train/thesis_optimized/weights/best.pt model/best.pt</el-text>
         </div>
       </div>
     </el-card>
@@ -136,7 +136,7 @@
       <template #header><span class="card-title">📝 毕业论文实验设计建议</span></template>
       <div class="guide-content">
         <h4>实验一：模型对比实验</h4>
-        <p>训练不同规模的 YOLOv11 模型（n/s/m），对比在 PlantDoc 数据集上的 mAP、Precision、Recall、F1 指标。</p>
+        <p>训练不同规模的 YOLOv11 模型（n/s/m），对比在 FieldPlant 数据集上的 mAP、Precision、Recall、F1 指标。</p>
         <el-text tag="code">python yolo/train.py --model yolo11n.pt --name exp_v11n</el-text>
         <br /><el-text tag="code">python yolo/train.py --model yolo11s.pt --name exp_v11s</el-text>
         <br /><el-text tag="code">python yolo/train.py --model yolo11m.pt --name exp_v11m</el-text>
@@ -157,7 +157,7 @@
           <li><strong>图片</strong>: 混淆矩阵 (confusion_matrix.png)</li>
           <li><strong>图片</strong>: PR 曲线 (PR_curve.png)</li>
           <li><strong>图片</strong>: 检测效果示例 (val_batch*_pred.jpg)</li>
-          <li><strong>表格</strong>: PlantDoc 各类别 AP 值对比</li>
+          <li><strong>表格</strong>: FieldPlant 各类别 AP 值对比</li>
         </ul>
       </div>
     </el-card>

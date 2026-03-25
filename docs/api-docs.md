@@ -493,9 +493,9 @@
   "msg": "查询成功",
   "data": {
     "dataset_exists": true,
-    "dataset_name": "PlantDoc",
-    "dataset_source": "DatasetNinja (datasetninja.com/plantdoc)",
-    "num_classes": 29,
+    "dataset_name": "FieldPlant",
+    "dataset_source": "Roboflow (universe.roboflow.com/plant-disease-detection/fieldplant)",
+    "num_classes": 27,
     "total_images": 2598,
     "total_labels": 2598,
     "splits": {

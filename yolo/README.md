@@ -2,7 +2,7 @@
 
 ## 概述
 
-本目录包含 YOLOv11 模型的训练、评估和推理脚本，用于 PlantDoc 植物病害目标检测任务。
+本目录包含 YOLOv11 模型的训练、评估和推理脚本，用于 FieldPlant 植物病害目标检测任务。
 
 ## 目录结构
 
@@ -13,9 +13,10 @@ yolo/
 ├── evaluate.py                # 模型评估脚本 (生成论文所需指标)
 ├── predict.py                 # 单张/批量图片推理脚本
 ├── export_model.py            # 模型格式导出工具
-├── prepare_plantdoc.py        # PlantDoc 数据集准备脚本
+├── prepare_dataset.py         # 统一数据集准备脚本 (支持 FieldPlant / PlantDoc)
+├── prepare_plantdoc.py        # PlantDoc 数据集准备脚本 (兼容保留)
 └── configs/
-    ├── data.yaml              # PlantDoc 数据集配置 (29 类)
+    ├── data.yaml              # FieldPlant 数据集配置 (27 类)
     ├── train_config.yaml      # YOLOv11 训练超参数参考
     ├── strategy_baseline.yaml     # 基线训练策略
     ├── strategy_augment.yaml      # 数据增强策略
@@ -34,24 +35,25 @@ pip install ultralytics torch torchvision
 
 推荐环境：PyTorch 2.3+, Python 3.12+, CUDA 12.1+, RTX 4090 或同等 GPU
 
-### 2. 准备 PlantDoc 数据集
+### 2. 准备 FieldPlant 数据集
 
 ```bash
-# 方式一：手动下载后转换
-# 从 DatasetNinja 下载 PlantDoc 数据集，解压后运行：
-python yolo/prepare_plantdoc.py --source /path/to/plantdoc_raw
-
-# 方式二：从 DatasetNinja GitHub Releases 自动下载
-python yolo/prepare_plantdoc.py --download
+# 从 Roboflow 下载 FieldPlant v11 数据集 (YOLO 格式导出):
+# https://universe.roboflow.com/plant-disease-detection/fieldplant/dataset/11
+# 解压后运行：
+python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11
 
 # 查看数据集类别信息
-python yolo/prepare_plantdoc.py --info
+python yolo/prepare_dataset.py --info
 
 # 验证数据集
-python yolo/prepare_plantdoc.py --validate
+python yolo/prepare_dataset.py --validate
+
+# 兼容 PlantDoc 数据集
+python yolo/prepare_dataset.py --source /path/to/plantdoc_raw --dataset plantdoc
 ```
 
-数据集下载地址：https://datasetninja.com/plantdoc
+数据集下载地址：https://universe.roboflow.com/plant-disease-detection/fieldplant/dataset/11
 
 确保转换后目录结构如下：
 
@@ -112,9 +114,9 @@ cp runs/train/thesis_optimized/weights/best.pt model/best.pt
 | lightweight | YOLOv11n | 2.6M | 150 | 416 | Adam | 边缘部署 |
 | **thesis** | **YOLOv11m** | **20.1M** | **300** | **800** | **AdamW** | **论文最优** |
 
-### 论文深度优化策略 (strategy_thesis) — 10 项核心优化
+### 论文深度优化策略 (strategy_thesis) — 核心优化
 
-本策略针对 PlantDoc 小数据集 (~2500 张, 29 类) 的特点，综合 10 项优化技术：
+本策略针对 FieldPlant 数据集 (27 类，木薯/玉米/番茄) 的特点，综合多项优化技术：
 
 #### 1. 模型容量提升
 
@@ -130,22 +132,22 @@ YOLOv11n (2.6M) → YOLOv11m (20.1M)
 
 ```yaml
 optimizer: AdamW      # 解耦权重衰减
-lr0: 0.0008           # 比常规值更低，训练更稳定
-lrf: 0.005            # 极低终止比例 (lr_final = 4e-6)
+lr0: 0.001            # 适配较大数据集
+lrf: 0.01             # 低终止比例
 cos_lr: true          # 余弦退火调度
 ```
 
 - AdamW 的自适应学习率 + 解耦权重衰减是目标检测任务的最佳选择
 - 极低终止学习率确保训练末期的精细收敛
 
-#### 3. 高分辨率训练
+#### 3. 标准分辨率训练
 
 ```yaml
-imgsz: 800            # 640 → 800
+imgsz: 640            # 标准分辨率
 ```
 
-- 植物病斑、锈斑等细微特征需要更高分辨率捕捉
-- 4090 显存充足，800px 配合 batch=16 不会 OOM
+- FieldPlant 田间实拍图像，640px 已能充分捕捉病害特征
+- 相比 800px 显著降低显存和时间开销，性价比更高
 
 #### 4. 充分训练时长
 
@@ -155,7 +157,7 @@ patience: 50          # 20 → 50
 ```
 
 - PlantDoc 数据量小 (~2500 张)，需要更多迭代才能充分拟合
-- 配合 patience=50 的早停保护，避免无效训练
+- FieldPlant 数据量更大，配合 patience=50 的早停保护，避免无效训练
 
 #### 5. 关闭末期 Mosaic (最关键优化)
 
@@ -172,9 +174,9 @@ close_mosaic: 20      # 最后 20 轮关闭
 #### 6. 长预热策略
 
 ```yaml
-warmup_epochs: 10     # 3 → 10
+warmup_epochs: 5      # 充分预热
 warmup_momentum: 0.5  # 从 0.5 过渡到 0.937
-warmup_bias_lr: 0.005
+warmup_bias_lr: 0.01
 ```
 
 - 消除早期训练的剧烈震荡（从训练曲线可观察到前 5-10 epoch 的不稳定）
@@ -184,10 +186,10 @@ warmup_bias_lr: 0.005
 
 ```yaml
 mosaic: 1.0           # 四图拼接
-mixup: 0.2            # 图像混合
+mixup: 0.15           # 图像混合
 copy_paste: 0.15      # 实例复制粘贴
 erasing: 0.3          # 随机擦除
-degrees: 15.0         # ±15° 旋转
+degrees: 10.0         # ±10° 旋转
 shear: 2.0            # 轻微剪切
 ```
 
@@ -218,60 +220,51 @@ amp: true             # FP16 混合精度
 
 ```yaml
 label_smoothing: 0.05 # 轻度标签平滑
-weight_decay: 0.02    # 较强权重衰减
-box: 8.0              # 提升定位精度
-cls: 1.0              # 分类损失
+weight_decay: 0.015   # 适度权重衰减
+box: 7.5              # 提升定位精度
+cls: 1.5              # 分类损失 (略提升，27 类细粒度)
 dfl: 1.5              # 分布式焦点损失
 ```
 
 - 提高 box 损失权重可改善检测框精度，提升 mAP@0.5:0.95
-- 轻度标签平滑避免过度自信，同时不影响分类边界
+- 略提升 cls 权重应对 27 类细粒度分类需求
+- 轻度标签平滑缓解类别不平衡
 
 ### 预期性能提升（待实验验证）
 
 以下为基于优化原理的预期目标值，实际结果需通过训练实验验证：
 
-| 指标 | Baseline (实测) | Thesis Optimized (预期目标) | 预期提升 |
+| 指标 | Baseline (预期) | Thesis Optimized (预期目标) | 预期提升 |
 |------|----------|-----------------|------|
-| mAP@0.5 | ~0.55 | ~0.70+ | ↑15+ pp |
-| mAP@0.5:0.95 | ~0.35 | ~0.48+ | ↑13+ pp |
-| Precision | ~0.50 | ~0.65+ | ↑15+ pp |
-| Recall | ~0.50 | ~0.60+ | ↑10+ pp |
-| 训练稳定性 | 剧烈振荡 | 平滑收敛 | 显著改善 |
+| mAP@0.5 | ~0.60 | ~0.75+ | ↑15+ pp |
+| mAP@0.5:0.95 | ~0.38 | ~0.50+ | ↑12+ pp |
+| Precision | ~0.55 | ~0.70+ | ↑15+ pp |
+| Recall | ~0.55 | ~0.65+ | ↑10+ pp |
+| 训练稳定性 | 一般 | 平滑收敛 | 显著改善 |
 
 ## YOLOv11 模型版本
 
-> 以下 mAP 为 PlantDoc 数据集上使用 thesis 策略的预期参考值（非 COCO 通用基准），实际精度取决于数据集和超参数配置。
+> 以下 mAP 为 FieldPlant 数据集上使用 thesis 策略的预期参考值（非 COCO 通用基准），实际精度取决于数据集和超参数配置。
 
-| 模型 | 参数量 | mAP@0.5 (PlantDoc 预期) | 推理速度 | 适用场景 |
+| 模型 | 参数量 | mAP@0.5 (FieldPlant 预期) | 推理速度 | 适用场景 |
 |------|--------|----------------|---------|---------|
-| YOLOv11n | 2.6M | ~55% | 最快 | 轻量级部署、快速实验 |
-| YOLOv11s | 9.4M | ~60% | 快 | 平衡精度与速度 |
-| YOLOv11m | 20.1M | ~70% | 中等 | 较高精度需求 (推荐) |
-| YOLOv11l | 25.3M | ~72% | 较慢 | 高精度需求 |
-| YOLOv11x | 56.9M | ~73% | 最慢 | 最高精度 |
+| YOLOv11n | 2.6M | ~60% | 最快 | 轻量级部署、快速实验 |
+| YOLOv11s | 9.4M | ~66% | 快 | 平衡精度与速度 |
+| YOLOv11m | 20.1M | ~75% | 中等 | 较高精度需求 (推荐) |
+| YOLOv11l | 25.3M | ~77% | 较慢 | 高精度需求 |
+| YOLOv11x | 56.9M | ~78% | 最慢 | 最高精度 |
 
 > 推荐使用 **YOLOv11m** 作为论文主模型，在精度和训练效率之间取得最佳平衡。
 
-## PlantDoc 数据集 (29 类)
+## FieldPlant 数据集 (27 类)
 
-PlantDoc 数据集包含 13 种植物的 29 类病害/健康状态：
+FieldPlant 数据集包含 3 种作物的 27 类病害/健康状态：
 
 | 植物 | 类别 |
 |------|------|
-| 苹果 | 黑星病叶、健康叶、锈病叶 |
-| 甜椒 | 健康叶、叶斑病 |
-| 蓝莓 | 健康叶 |
-| 樱桃 | 健康叶 |
-| 玉米 | 灰斑病、叶枯病、锈病叶 |
-| 葡萄 | 健康叶、黑腐病叶 |
-| 桃树 | 健康叶 |
-| 马铃薯 | 健康叶、早疫病叶、晚疫病叶 |
-| 覆盆子 | 健康叶 |
-| 大豆 | 健康叶 |
-| 南瓜 | 白粉病叶 |
-| 草莓 | 健康叶 |
-| 番茄 | 早疫病叶、叶斑病、健康叶、细菌性斑点病叶、晚疫病叶、花叶病毒叶、黄化曲叶病毒叶、霉病叶、二斑叶螨叶 |
+| 木薯 | 细菌性枯萎病、褐斑病、健康、花叶病、根腐病 |
+| 玉米 | 褐斑病、炭疽病、褪绿叶斑病、灰斑病、健康、虫害、霉病、紫色变色、黑穗病、条纹病、条斑病、紫罗兰变色、黄斑病、黄化病、叶枯病、锈病叶 |
+| 番茄 | 褐斑病、细菌性萎蔫病、疫病叶、健康、花叶病毒、黄化曲叶病毒 |
 
 ## 训练输出
 
@@ -301,7 +294,7 @@ runs/train/<name>/
 
 ### 实验一：训练策略全面对比（核心实验）
 
-对比所有训练策略在 PlantDoc 上的性能差异：
+对比所有训练策略在 FieldPlant 上的性能差异：
 
 ```bash
 python yolo/train.py --strategy baseline     --name exp_baseline
@@ -320,7 +313,7 @@ python yolo/train.py --strategy thesis       --name exp_thesis
 
 ### 实验二：模型规模消融实验
 
-对比不同规模 YOLOv11 模型在 PlantDoc 上的性能-效率权衡：
+对比不同规模 YOLOv11 模型在 FieldPlant 上的性能-效率权衡：
 
 ```bash
 python yolo/train.py --strategy thesis --model yolo11n.pt --name exp_model_n --imgsz 640
@@ -368,9 +361,9 @@ python yolo/train.py --strategy thesis --imgsz 1024 --name exp_imgsz_1024
 4. **图片**: 训练损失曲线对比图（baseline vs thesis 的 loss 和 mAP 变化）
 5. **图片**: 混淆矩阵 (`confusion_matrix.png`)
 6. **图片**: PR 曲线 (`PR_curve.png`)
-7. **图片**: 各类别 AP 条形图（展示小样本类别的改善）
+7. **图片**: 各类别 AP 条形图（展示木薯/玉米/番茄三大类的差异）
 8. **图片**: 检测效果示例 (`val_batch*_pred.jpg`)
-9. **表格**: PlantDoc 各类别 AP 值
+9. **表格**: FieldPlant 各类别 AP 值
 
 ### RTX 4090 训练时间估计
 

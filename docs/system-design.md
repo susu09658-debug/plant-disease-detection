@@ -26,7 +26,7 @@
 │  └────────┴────────┴─────────┴──────────┴───────┴──────┘     │
 │         ↕                    ↕            ↕                   │
 │  ┌──────────┐       ┌──────────────┐ ┌────────────────┐      │
-│  │ MySQL 8.0│       │YOLOv11 Model │ │PlantDoc Dataset│      │
+│  │ MySQL 8.0│       │YOLOv11 Model │ │FieldPlant Dataset│      │
 │  └──────────┘       └──────────────┘ └────────────────┘      │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -43,7 +43,7 @@
 | 认证方式  | JWT（PyJWT 2.12.1）                          |
 | 密码加密  | Django PBKDF2（make_password/check_password）|
 | AI 模型   | YOLOv11（ultralytics）                       |
-| 训练数据集| PlantDoc（DatasetNinja, 29 类植物病害）            |
+| 训练数据集| FieldPlant（Roboflow, 27 类植物病害）              |
 | 数据库    | MySQL 8.0                                   |
 | 缓存      | Django LocMemCache（验证码存储）             |
 | 跨域      | django-cors-headers                         |
@@ -116,7 +116,7 @@
 - 正常情况：加载 `model/best.pt`，调用 YOLOv11 推理
 - 模型文件不存在时：返回随机模拟数据（便于开发调试，不影响系统其他功能运行）
 - 推理出错时：捕获异常并降级返回模拟数据
-- 类名映射：英文类名自动映射为中文名称（与 `yolo/configs/data.yaml` PlantDoc 29 类一致）
+- 类名映射：英文类名自动映射为中文名称（与 `yolo/configs/data.yaml` FieldPlant 27 类一致）
 
 ## 六、YOLO 模型训练与评估
 
@@ -128,9 +128,10 @@ yolo/                           # 训练与评估脚本
 ├── evaluate.py                 # 模型评估（生成论文指标）
 ├── predict.py                  # 单张/批量推理
 ├── export_model.py             # 模型格式导出
-├── prepare_plantdoc.py         # PlantDoc 数据集准备脚本
+├── prepare_plantdoc.py         # PlantDoc 数据集准备脚本（兼容保留）
+├── prepare_dataset.py          # 统一数据集准备脚本（FieldPlant / PlantDoc）
 └── configs/
-    ├── data.yaml               # PlantDoc 数据集配置（29 类）
+    ├── data.yaml               # FieldPlant 数据集配置（27 类）
     ├── train_config.yaml       # YOLOv11 训练超参数参考
     ├── strategy_baseline.yaml      # 基线训练策略
     ├── strategy_augment.yaml       # 数据增强策略
@@ -154,7 +155,7 @@ model/                          # 系统部署使用的模型权重
 
 ### 6.2 训练流程
 
-1. 准备 PlantDoc 数据集: `python yolo/prepare_plantdoc.py --download` 或 `--source /path/to/raw`
+1. 准备 FieldPlant 数据集: `python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11`
 2. 执行训练: `python yolo/train.py`
 3. 评估模型: `python yolo/evaluate.py --split test --save-json`
 4. 部署模型: `cp runs/train/plant_disease/weights/best.pt model/best.pt`

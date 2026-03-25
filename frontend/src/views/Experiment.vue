@@ -101,7 +101,7 @@
       <template #header><span class="card-title">📋 实验设计说明</span></template>
       <div class="experiment-desc">
         <h4>一、实验目的</h4>
-        <p>验证基于 YOLOv11 目标检测模型在植物病害识别任务中的有效性，通过在 PlantDoc 植物病害数据集上训练并评估模型性能，证明该方法在实际植物病害检测场景中具有可行性和良好的检测精度。</p>
+        <p>验证基于 YOLOv11 目标检测模型在植物病害识别任务中的有效性，通过在 FieldPlant 植物病害数据集上训练并评估模型性能，证明该方法在实际植物病害检测场景中具有可行性和良好的检测精度。</p>
 
         <h4>二、实验环境</h4>
         <el-descriptions :column="2" border size="small">
@@ -114,7 +114,7 @@
         </el-descriptions>
 
         <h4>三、数据集</h4>
-        <p>本实验使用 DatasetNinja 上的 PlantDoc 公开数据集进行植物病害目标检测，包含 {{ modelInfo.num_classes || 29 }} 个类别，涵盖苹果、甜椒、蓝莓、樱桃、玉米、葡萄、桃树、马铃薯、覆盆子、大豆、南瓜、草莓和番茄等常见农作物的健康与病害样本。数据集按 8:1:1 的比例划分为训练集、验证集和测试集。</p>
+        <p>本实验使用 Roboflow 上的 FieldPlant 公开数据集进行植物病害目标检测，包含 {{ modelInfo.num_classes || 27 }} 个类别，涵盖木薯、玉米和番茄等常见农作物的健康与病害样本。数据集已预划分为训练集、验证集和测试集。</p>
 
         <h4>四、评估指标</h4>
         <ul>

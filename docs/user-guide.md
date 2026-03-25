@@ -5,7 +5,7 @@
 本系统是基于 YOLOv11 深度学习模型的植物病害智能检测平台，采用前后端分离架构（Vue 3 + Django），支持用户上传植物叶片图片，自动识别病害类型并给出检测结果。系统集成了数据集管理、模型训练、实验评估和知识库等功能，可服务于农业科研人员、植物保护工作者及相关专业学生。
 
 主要特性：
-- 支持 29 类植物病害的智能检测（基于 PlantDoc 数据集）
+- 支持 27 类植物病害的智能检测（基于 FieldPlant 数据集）
 - 完善的用户管理与权限控制
 - 知识库系统提供病害防治参考
 - 实验结果可视化，适合论文撰写
@@ -74,7 +74,7 @@
 | 📋 历史记录 | 查看历史检测记录 | 所有用户 |
 | 📖 知识库 | 浏览病害知识条目 | 所有用户 |
 | **模型与数据**（子菜单） | | |
-| ├ 📁 数据集管理 | PlantDoc 数据集概览与管理 | 仅管理员 |
+| ├ 📁 数据集管理 | FieldPlant 数据集概览与管理 | 仅管理员 |
 | ├ 🎯 模型训练 | 训练配置、历史记录、实验建议 | 仅管理员 |
 | └ 📊 实验结果 | 模型评估指标与训练曲线 | 所有用户 |
 | 👤 个人中心 | 个人信息与密码管理 | 所有用户 |
@@ -294,10 +294,10 @@
 
 ### 10.4 数据集管理（管理员专属）
 
-管理员可查看和管理 PlantDoc 数据集：
+管理员可查看和管理 FieldPlant 数据集：
 
-- **数据集概览**：数据集来源（DatasetNinja）、总图片数、总标注数
-- **类别分布统计**：29 个类别各自的样本数量及占比
+- **数据集概览**：数据集来源（Roboflow）、总图片数、总标注数
+- **类别分布统计**：27 个类别各自的样本数量及占比
 - **划分信息**：训练集/验证集/测试集的图片和标注数量
 - **数据集验证**：检查数据集完整性（图片-标注对应关系、格式校验）
 
@@ -319,12 +319,12 @@
 
 ---
 
-## 十一、PlantDoc 数据集说明
+## 十一、FieldPlant 数据集说明
 
 ### 11.1 数据集概述
 
-- **数据来源**：DatasetNinja（https://datasetninja.com/plantdoc）
-- **类别数量**：29 类，覆盖 13 种植物
+- **数据来源**：Roboflow（https://universe.roboflow.com/plant-disease-detection/fieldplant/dataset/11）
+- **类别数量**：27 类，覆盖 3 种作物（木薯、玉米、番茄）
 - **标注格式**：目标检测边界框（Bounding Box）标注
 - **适用任务**：植物叶片病害目标检测
 
@@ -368,26 +368,26 @@
 
 #### 方式一：手动下载后转换（推荐）
 
-1. 访问 https://datasetninja.com/plantdoc 下载 PlantDoc 数据集（Supervisely 格式）
-2. 解压后目录结构为：`train/img/`, `train/ann/`, `test/img/`, `test/ann/`
+1. 访问 https://universe.roboflow.com/plant-disease-detection/fieldplant/dataset/11 下载 FieldPlant 数据集（YOLO 格式）
+2. 解压后目录结构为：`train/images/`, `train/labels/`, `valid/images/`, `valid/labels/`, `test/images/`, `test/labels/`
 3. 运行转换脚本（自动检测预划分目录，保留 test 集，从 train 中拆分出 val 集）：
 
 ```bash
-python yolo/prepare_plantdoc.py --source /path/to/plantdoc-DatasetNinja
+python yolo/prepare_dataset.py --source /path/to/FieldPlant.v11
 ```
 
-#### 方式二：从 GitHub Releases 自动下载
+#### 方式二：兼容 PlantDoc 数据集
 
 ```bash
-python yolo/prepare_plantdoc.py --download
+python yolo/prepare_dataset.py --source /path/to/plantdoc_raw --dataset plantdoc
 ```
 
-> **注意**: `dataset-ninja` 包不在公共 PyPI 上，请使用方式一手动下载。
+> **说明**: 如需使用旧版 PlantDoc 数据集，可通过 `--dataset plantdoc` 参数指定。
 
 #### 验证数据集
 
 ```bash
-python yolo/prepare_plantdoc.py --validate
+python yolo/prepare_dataset.py --validate
 ```
 
 验证通过后，数据集将按以下结构存放：
