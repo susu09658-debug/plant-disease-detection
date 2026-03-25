@@ -112,7 +112,7 @@ cp runs/train/thesis_optimized/weights/best.pt model/best.pt
 | augment | YOLOv11n | 2.6M | 200 | 640 | SGD | 增强实验 |
 | finetune | YOLOv11s | 9.4M | 250 | 640 | AdamW | 高精度 |
 | lightweight | YOLOv11n | 2.6M | 150 | 416 | Adam | 边缘部署 |
-| **thesis** | **YOLOv11m** | **20.1M** | **300** | **800** | **AdamW** | **论文最优** |
+| **thesis** | **YOLOv11m** | **20.1M** | **300** | **640** | **AdamW** | **论文最优** |
 
 ### 论文深度优化策略 (strategy_thesis) — 核心优化
 
