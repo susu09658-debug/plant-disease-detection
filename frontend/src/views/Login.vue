@@ -70,7 +70,7 @@
               <el-form-item prop="nickname">
                 <el-input
                   v-model="registerForm.nickname"
-                  placeholder="请设置昵称（选填，用于展示）"
+                  placeholder="请设置昵称"
                   prefix-icon="UserFilled"
                 />
               </el-form-item>
