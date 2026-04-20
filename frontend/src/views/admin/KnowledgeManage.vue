@@ -19,6 +19,19 @@
     <el-card shadow="never">
       <el-table v-loading="loading" :data="list" stripe style="width: 100%">
         <el-table-column prop="id" label="ID" width="70" />
+        <el-table-column label="缩略图" width="90">
+          <template #default="{ row }">
+            <el-image
+              v-if="row.image_url"
+              :src="row.image_url"
+              :preview-src-list="[row.image_url]"
+              fit="cover"
+              style="width: 50px; height: 50px; border-radius: 6px;"
+              preview-teleported
+            />
+            <span v-else style="color: #909399; font-size: 12px;">暂无图片</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="plant_name" label="植物名称" width="110" />
         <el-table-column prop="disease_name" label="病害名称" min-width="130" />
         <el-table-column label="严重等级" width="100">
@@ -69,8 +82,21 @@
         <el-form-item label="防治方法" prop="treatment">
           <el-input v-model="form.treatment" type="textarea" :rows="3" />
         </el-form-item>
-        <el-form-item label="图片URL">
-          <el-input v-model="form.image_url" placeholder="可选，输入参考图片链接" />
+        <el-form-item label="参考图片" prop="image_url">
+          <el-upload
+            class="knowledge-uploader"
+            action="/api/knowledge/upload/image/"  :headers="uploadHeaders"
+            :show-file-list="false"
+            :on-success="handleUploadSuccess"
+            :before-upload="beforeImageUpload"
+            accept="image/*"
+          >
+            <img v-if="form.image_url" :src="form.image_url" class="uploaded-image" />
+            <div v-else class="upload-placeholder">
+              <el-icon class="upload-icon"><Plus /></el-icon>
+              <span>点击上传图片</span>
+            </div>
+          </el-upload>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -85,6 +111,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getList, createKnowledge, updateKnowledge, deleteKnowledge } from '../../api/knowledge';
+import { Plus } from '@element-plus/icons-vue';
 
 const loading = ref(false);
 const saving = ref(false);
@@ -168,6 +195,37 @@ const handleDelete = async (id) => {
 };
 
 onMounted(loadData);
+
+const uploadHeaders = reactive({
+    Authorization: `Bearer ${localStorage.getItem('token') || ''}`
+});
+
+// 2. 上传前的校验（限制格式和大小，比如 5MB）
+const beforeImageUpload = (file) => {
+    const isImage = file.type.startsWith('image/');
+    const isLt5M = file.size / 1024 / 1024 < 5;
+
+    if (!isImage) {
+        ElMessage.error('上传的必须是图片格式!');
+        return false;
+    }
+    if (!isLt5M) {
+        ElMessage.error('图片大小不能超过 5MB!');
+        return false;
+    }
+    return true;
+};
+
+// 3. 上传成功后的回调
+const handleUploadSuccess = (res, file) => {
+    // 假设后端返回的格式是 { code: 200, data: { url: '/media/images/xxx.jpg' } }
+    if (res.code === 200) {
+        form.image_url = res.data.url;
+        ElMessage.success('图片上传成功');
+    } else {
+        ElMessage.error(res.msg || '上传失败');
+    }
+};
 </script>
 
 <style scoped>
@@ -188,5 +246,41 @@ onMounted(loadData);
 .pagination {
     margin-top: 16px;
     justify-content: flex-end;
+}
+
+.knowledge-uploader {
+    border: 1px dashed #d9d9d9;
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    width: 178px;
+    height: 178px;
+    transition: border-color 0.3s;
+}
+
+.knowledge-uploader:hover {
+    border-color: #409eff;
+}
+
+.upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: #8c939d;
+}
+
+.upload-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.uploaded-image {
+    width: 178px;
+    height: 178px;
+    display: block;
+    object-fit: cover;
 }
 </style>

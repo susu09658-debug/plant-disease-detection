@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from utils.authentication import JWTAuthentication
 from .models import DetectRecord
 from .serializers import DetectRecordSerializer
-
+from datetime import timedelta, datetime, time
 
 class DetectUploadView(APIView):
     """图片上传与 YOLOv11 检测接口（支持选择不同模型）"""
@@ -158,17 +158,25 @@ class DetectStatsView(APIView):
             .order_by('-count')[:10]
         )
 
-        # 近7天检测趋势
-        from datetime import timedelta, date
-        today = date.today()
+        # 获取当前时间的本地化日期，避免时区偏差
+        today = timezone.localtime().date()
         trend = []
-        for i in range(6, -1, -1):
-            day = today - timedelta(days=i)
-            count = queryset.filter(detect_time__date=day).count()
-            trend.append({'date': str(day), 'count': count})
 
-        # 今日检测数
-        today_count = queryset.filter(detect_time__date=today).count()
+        for i in range(6, -1, -1):
+            target_date = today - timedelta(days=i)
+
+            # 构造一天的起点 (00:00:00) 和终点 (23:59:59)
+            start_datetime = timezone.make_aware(datetime.combine(target_date, time.min))
+            end_datetime = timezone.make_aware(datetime.combine(target_date, time.max))
+
+            # 使用 range 范围查询替代原先的 __date 查询
+            count = queryset.filter(detect_time__range=(start_datetime, end_datetime)).count()
+            trend.append({'date': str(target_date), 'count': count})
+
+        # 今日检测数 (同样修改为范围查询)
+        today_start = timezone.make_aware(datetime.combine(today, time.min))
+        # 只要大于等于今天的 00:00:00 即可
+        today_count = queryset.filter(detect_time__gte=today_start).count()
 
         return Response({
             'code': 200,

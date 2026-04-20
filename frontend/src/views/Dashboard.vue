@@ -140,11 +140,13 @@
   </div>
 </template>
 
+
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { getStats } from '../api/detect';
 import { getList } from '../api/knowledge';
 import { getModelInfo } from '../api/experiment';
+// import { ElMessage } from 'element-plus'; // 需要提示可开启
 
 const stats = ref({
     total: 0,
@@ -154,22 +156,61 @@ const stats = ref({
 });
 const knowledgeTotal = ref(0);
 const modelInfo = ref({});
+let refreshTimer = null;
 
-const loadData = async () => {
+// 独立加载统计数据
+const loadStats = async () => {
     try {
-        const [statsRes, knowledgeRes, modelRes] = await Promise.all([
-            getStats(),
-            getList({ page: 1, page_size: 1 }),
-            getModelInfo(),
-        ]);
-        stats.value = statsRes.data;
-        knowledgeTotal.value = knowledgeRes.data.total;
-        modelInfo.value = modelRes.data;
-    } catch {}
+        const res = await getStats();
+        if (res && res.data) stats.value = res.data;
+    } catch (err) {
+        console.error('获取统计数据失败:', err);
+    }
 };
 
-onMounted(loadData);
+// 独立加载知识库数量
+const loadKnowledge = async () => {
+    try {
+        const res = await getList({ page: 1, page_size: 1 });
+        if (res && res.data) knowledgeTotal.value = res.data.total || 0;
+    } catch (err) {
+        console.error('获取知识库数据失败:', err);
+    }
+};
+
+// 独立加载模型状态
+const loadModel = async () => {
+    try {
+        const res = await getModelInfo();
+        if (res && res.data) modelInfo.value = res.data;
+    } catch (err) {
+        console.error('获取模型信息失败:', err);
+    }
+};
+
+// 汇总执行
+const loadAllData = () => {
+    loadStats();
+    loadKnowledge();
+    loadModel();
+};
+
+onMounted(() => {
+    loadAllData(); // 首次加载
+    
+    // 开启轮询：每10秒刷新一次数据，实现实时趋势与今日检测数量的更新
+    refreshTimer = setInterval(() => {
+        loadStats(); 
+        loadModel();
+        // 知识库数量如果不常变，可以不放进轮询里
+    }, 10000); 
+});
+
+onUnmounted(() => {
+    if (refreshTimer) clearInterval(refreshTimer);
+});
 </script>
+
 
 <style scoped>
 .dashboard {

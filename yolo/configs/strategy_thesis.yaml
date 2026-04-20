@@ -73,7 +73,7 @@
 # ---- 基本训练参数 ----
 model: yolo11m.pt            # YOLOv11m (20.1M 参数，27 类细粒度分类需要更强特征提取)
 epochs: 300                  # 充分训练 (配合 patience=50 早停保护)
-batch: 16                    # 批次大小 (配合 imgsz=640 + yolo11m，4090 显存安全)
+batch: 32                    # 批次大小 (配合 imgsz=640 + yolo11m，4090 显存安全)
 imgsz: 640                   # 标准分辨率 (FieldPlant 田间实拍图，640px 性价比最佳)
 patience: 50                 # 早停轮数 (充足耐心，避免过早终止)
 

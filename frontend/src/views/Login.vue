@@ -62,7 +62,7 @@
               <el-form-item prop="username">
                 <el-input
                   v-model="registerForm.username"
-                  placeholder="请设置用户ID（2-20位，用于登录）"
+                  placeholder="请设置用户ID（2-20位字母或数字，用于登录）"
                   prefix-icon="User"
                 />
               </el-form-item>
@@ -70,7 +70,7 @@
               <el-form-item prop="nickname">
                 <el-input
                   v-model="registerForm.nickname"
-                  placeholder="请设置昵称"
+                  placeholder="请设置昵称（最多20个字符，用于系统展示）"
                   prefix-icon="UserFilled"
                 />
               </el-form-item>
@@ -244,8 +244,11 @@ const registerRules = reactive({
     username: [
         { required: true, message: '请输入用户ID', trigger: 'blur' },
         { min: 2, max: 20, message: '长度2到20个字符', trigger: 'blur' },
+        { pattern: /^[a-zA-Z0-9]+$/, message: '用户ID只能包含字母和数字', trigger: 'blur' }
     ],
     nickname: [
+        // 新增这行必填校验
+        { required: true, message: '请输入昵称', trigger: 'blur' },
         { max: 20, message: '昵称最多20个字符', trigger: 'blur' },
     ],
     phone: [{ required: true, validator: validatePhone, trigger: 'blur' }],

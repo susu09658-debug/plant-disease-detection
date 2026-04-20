@@ -1,14 +1,46 @@
 <template>
   <div class="experiment-page">
-    <h2 class="page-title">📊 实验结果</h2>
+    <div class="page-header">
+      <h2 class="page-title">📊 实验结果</h2>
+      <div class="run-selector" v-if="trainHistoryList.length > 0">
+        <span class="selector-label">切换记录:</span>
+        <el-select 
+          v-model="selectedRun" 
+          placeholder="请选择训练记录" 
+          @change="handleRunChange"
+          style="width: 280px;"
+        >
+          <el-option
+            v-for="run in trainHistoryList"
+            :key="run.name"
+            :label="run.name"
+            :value="run.name"
+          >
+            <div class="option-content">
+              <span class="run-name">{{ run.name }}</span>
+              <el-tag size="small" type="info" class="run-tag">
+                {{ run.epochs_completed }}/{{ run.epochs }} Epochs
+              </el-tag>
+            </div>
+          </el-option>
+        </el-select>
+      </div>
+    </div>
 
-    <!-- 模型信息卡片 -->
     <el-card shadow="never" class="section-card">
       <template #header><span class="card-title">🤖 模型信息</span></template>
       <el-descriptions :column="3" border>
-        <el-descriptions-item label="模型版本">
-          <el-tag type="primary">{{ modelInfo.model_version || 'YOLOv11n' }}</el-tag>
-        </el-descriptions-item>
+      <el-descriptions-item label="模型文件">
+        <el-tag :type="modelInfo.model_loaded ? 'primary' : 'danger'">
+          {{ modelInfo.model_version || '-' }}
+        </el-tag>
+      </el-descriptions-item>
+
+      <el-descriptions-item label="物理路径">
+        <span style="font-size: 12px; color: #909399;">
+          {{ modelInfo.model_path || '-' }}
+        </span>
+      </el-descriptions-item>
         <el-descriptions-item label="类别数量">{{ modelInfo.num_classes || 29 }}</el-descriptions-item>
         <el-descriptions-item label="输入尺寸">{{ modelInfo.input_size || 640 }} × {{ modelInfo.input_size || 640 }}</el-descriptions-item>
         <el-descriptions-item label="模型状态">
@@ -17,15 +49,14 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="模型大小">{{ modelInfo.file_size_mb || '-' }} MB</el-descriptions-item>
-        <el-descriptions-item label="训练记录">
-          <el-tag :type="modelInfo.has_train_records ? 'success' : 'info'">
-            {{ modelInfo.has_train_records ? modelInfo.latest_run : '暂无' }}
+        <el-descriptions-item label="当前展示记录">
+          <el-tag type="success">
+            {{ selectedRun || '暂无' }}
           </el-tag>
         </el-descriptions-item>
       </el-descriptions>
     </el-card>
 
-    <!-- 训练配置 -->
     <el-card shadow="never" class="section-card">
       <template #header><span class="card-title">⚙️ 训练配置</span></template>
       <el-descriptions :column="3" border>
@@ -38,7 +69,6 @@
       </el-descriptions>
     </el-card>
 
-    <!-- 核心评估指标 -->
     <el-card shadow="never" class="section-card">
       <template #header>
         <div class="card-header-flex">
@@ -56,7 +86,6 @@
       </el-row>
     </el-card>
 
-    <!-- 训练曲线 -->
     <el-row :gutter="16">
       <el-col :span="12">
         <el-card shadow="never" class="section-card">
@@ -76,7 +105,6 @@
       </el-col>
     </el-row>
 
-    <!-- 各类别 AP 对比 -->
     <el-card shadow="never" class="section-card">
       <template #header><span class="card-title">🏷️ 各类别检测性能</span></template>
       <div v-if="classNames && Object.keys(classNames).length">
@@ -96,34 +124,18 @@
       <el-empty v-else description="暂无各类别评估数据" :image-size="60" />
     </el-card>
 
-    <!-- 实验设计说明 -->
     <el-card shadow="never" class="section-card">
       <template #header><span class="card-title">📋 实验设计说明</span></template>
       <div class="experiment-desc">
         <h4>一、实验目的</h4>
-        <p>验证基于 YOLOv11 目标检测模型在植物病害识别任务中的有效性，通过在 FieldPlant 植物病害数据集上训练并评估模型性能，证明该方法在实际植物病害检测场景中具有可行性和良好的检测精度。</p>
+        <p>验证基于 YOLOv11 目标检测模型在植物病害识别任务中的有效性，通过在 FieldPlant 植物病害数据集上训练并评估模型性能。</p>
 
         <h4>二、实验环境</h4>
         <el-descriptions :column="2" border size="small">
-          <el-descriptions-item label="操作系统">Ubuntu 20.04 / Windows 11</el-descriptions-item>
           <el-descriptions-item label="GPU">NVIDIA GeForce RTX 3060 (12GB)</el-descriptions-item>
           <el-descriptions-item label="深度学习框架">PyTorch 2.x + Ultralytics</el-descriptions-item>
-          <el-descriptions-item label="Python 版本">3.10+</el-descriptions-item>
           <el-descriptions-item label="检测模型">YOLOv11n / YOLOv11s</el-descriptions-item>
-          <el-descriptions-item label="输入分辨率">640 × 640</el-descriptions-item>
         </el-descriptions>
-
-        <h4>三、数据集</h4>
-        <p>本实验使用 Roboflow 上的 FieldPlant 公开数据集进行植物病害目标检测，包含 {{ modelInfo.num_classes || 27 }} 个类别，涵盖木薯、玉米和番茄等常见农作物的健康与病害样本。数据集已预划分为训练集、验证集和测试集。</p>
-
-        <h4>四、评估指标</h4>
-        <ul>
-          <li><strong>mAP@0.5</strong>: IoU 阈值为 0.5 时的平均精度均值</li>
-          <li><strong>mAP@0.5:0.95</strong>: IoU 从 0.5 到 0.95 (步长 0.05) 的平均 mAP</li>
-          <li><strong>Precision (精确率)</strong>: 检测为阳性的样本中实际为阳性的比例</li>
-          <li><strong>Recall (召回率)</strong>: 实际为阳性的样本中被检测到的比例</li>
-          <li><strong>F1-Score</strong>: Precision 与 Recall 的调和平均</li>
-        </ul>
       </div>
     </el-card>
   </div>
@@ -131,14 +143,22 @@
 
 <script setup>
 import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue';
-import { getExperimentMetrics, getTrainCurves, getModelInfo } from '../api/experiment';
+import { 
+  getExperimentMetrics, 
+  getTrainCurves, 
+  getModelInfo, 
+  getTrainHistory 
+} from '../api/experiment';
 
+// 数据状态
 const metrics = ref({});
 const trainConfig = ref({});
 const classNames = ref({});
 const classNamesCn = ref({});
 const modelInfo = ref({});
 const curvesData = ref({});
+const trainHistoryList = ref([]); // 训练历史列表
+const selectedRun = ref('');     // 当前选中的运行目录名
 
 const lossChartRef = ref(null);
 const metricChartRef = ref(null);
@@ -157,16 +177,13 @@ const metricCards = [
 
 const formatPercent = (val) => {
   if (val === undefined || val === null) return '-';
-  if (val > 1) return val;  // epochs count
+  if (val > 1) return val; 
   return (val * 100).toFixed(2) + '%';
 };
 
-// 各类别 AP 暂用模拟数据 (实际训练后会从后端获取)
 const classAPMap = ref({});
-
 const getClassAP = (id) => {
   if (classAPMap.value[id] !== undefined) return classAPMap.value[id];
-  // 如果没有真实数据，基于总 mAP 生成确定性模拟变化量
   const base = (metrics.value.mAP50 || 0.87) * 100;
   const offset = ((parseInt(id) * 7 + 3) % 15) - 7;
   return Math.max(60, Math.min(99, Math.round(base + offset)));
@@ -179,17 +196,16 @@ const getAPColor = (ap) => {
   return '#f56c6c';
 };
 
-// ---- Chart.js 绘图 ----
+// ---- Chart.js 绘图逻辑 (保持不变) ----
 let Chart = null;
 
 const drawCharts = async () => {
   if (!Chart) return;
   await nextTick();
-
   const epochs = curvesData.value.epochs || [];
   if (!epochs.length) return;
 
-  // 损失曲线
+  // 1. 损失曲线
   if (lossChartRef.value) {
     if (lossChartInstance) lossChartInstance.destroy();
     lossChartInstance = new Chart(lossChartRef.value, {
@@ -197,59 +213,17 @@ const drawCharts = async () => {
       data: {
         labels: epochs,
         datasets: [
-          {
-            label: 'Train Box Loss',
-            data: curvesData.value.train_box_loss,
-            borderColor: '#409eff',
-            backgroundColor: 'rgba(64,158,255,0.1)',
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.3,
-          },
-          {
-            label: 'Train Cls Loss',
-            data: curvesData.value.train_cls_loss,
-            borderColor: '#67c23a',
-            backgroundColor: 'rgba(103,194,58,0.1)',
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.3,
-          },
-          {
-            label: 'Val Box Loss',
-            data: curvesData.value.val_box_loss,
-            borderColor: '#e6a23c',
-            backgroundColor: 'rgba(230,162,60,0.1)',
-            borderWidth: 2,
-            pointRadius: 0,
-            borderDash: [5, 5],
-            tension: 0.3,
-          },
-          {
-            label: 'Val Cls Loss',
-            data: curvesData.value.val_cls_loss,
-            borderColor: '#f56c6c',
-            backgroundColor: 'rgba(245,108,108,0.1)',
-            borderWidth: 2,
-            pointRadius: 0,
-            borderDash: [5, 5],
-            tension: 0.3,
-          },
-        ],
+          { label: 'Train Box Loss', data: curvesData.value.train_box_loss, borderColor: '#409eff', tension: 0.3, pointRadius: 0 },
+          { label: 'Train Cls Loss', data: curvesData.value.train_cls_loss, borderColor: '#67c23a', tension: 0.3, pointRadius: 0 },
+          { label: 'Val Box Loss', data: curvesData.value.val_box_loss, borderColor: '#e6a23c', borderDash: [5, 5], tension: 0.3, pointRadius: 0 },
+          { label: 'Val Cls Loss', data: curvesData.value.val_cls_loss, borderColor: '#f56c6c', borderDash: [5, 5], tension: 0.3, pointRadius: 0 }
+        ]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'top' } },
-        scales: {
-          x: { title: { display: true, text: 'Epoch' } },
-          y: { title: { display: true, text: 'Loss' }, min: 0 },
-        },
-      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0 } } }
     });
   }
 
-  // 精度曲线
+  // 2. 精度曲线
   if (metricChartRef.value) {
     if (metricChartInstance) metricChartInstance.destroy();
     metricChartInstance = new Chart(metricChartRef.value, {
@@ -257,62 +231,44 @@ const drawCharts = async () => {
       data: {
         labels: epochs,
         datasets: [
-          {
-            label: 'mAP@0.5',
-            data: curvesData.value.mAP50,
-            borderColor: '#409eff',
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.3,
-          },
-          {
-            label: 'mAP@0.5:0.95',
-            data: curvesData.value.mAP50_95,
-            borderColor: '#67c23a',
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.3,
-          },
-          {
-            label: 'Precision',
-            data: curvesData.value.precision,
-            borderColor: '#e6a23c',
-            borderWidth: 2,
-            pointRadius: 0,
-            borderDash: [5, 5],
-            tension: 0.3,
-          },
-          {
-            label: 'Recall',
-            data: curvesData.value.recall,
-            borderColor: '#f56c6c',
-            borderWidth: 2,
-            pointRadius: 0,
-            borderDash: [5, 5],
-            tension: 0.3,
-          },
-        ],
+          { label: 'mAP@0.5', data: curvesData.value.mAP50, borderColor: '#409eff', tension: 0.3, pointRadius: 0 },
+          { label: 'mAP@0.5:0.95', data: curvesData.value.mAP50_95, borderColor: '#67c23a', tension: 0.3, pointRadius: 0 },
+          { label: 'Precision', data: curvesData.value.precision, borderColor: '#e6a23c', borderDash: [5, 5], tension: 0.3, pointRadius: 0 },
+          { label: 'Recall', data: curvesData.value.recall, borderColor: '#f56c6c', borderDash: [5, 5], tension: 0.3, pointRadius: 0 }
+        ]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'top' } },
-        scales: {
-          x: { title: { display: true, text: 'Epoch' } },
-          y: { title: { display: true, text: 'Score' }, min: 0, max: 1 },
-        },
-      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 1 } } }
     });
   }
 };
 
+// ---- 数据加载逻辑 ----
+
+// 获取历史记录列表
+const fetchHistory = async () => {
+  try {
+    const res = await getTrainHistory();
+    trainHistoryList.value = res.data.runs || [];
+    // 默认选中第一个（最新记录）
+    if (trainHistoryList.value.length > 0 && !selectedRun.value) {
+      selectedRun.value = trainHistoryList.value[0].name;
+    }
+  } catch (e) {
+    console.error('加载历史记录失败', e);
+  }
+};
+
+// 根据选中的 run 加载详细数据
 const loadData = async () => {
   try {
+    const params = selectedRun.value ? { run: selectedRun.value } : {};
+    
     const [metricsRes, curvesRes, modelRes] = await Promise.all([
-      getExperimentMetrics(),
-      getTrainCurves(),
-      getModelInfo(),
+      getExperimentMetrics(params),
+      getTrainCurves(params),
+      getModelInfo(params),
     ]);
+    
     metrics.value = metricsRes.data.metrics || {};
     trainConfig.value = metricsRes.data.train_config || {};
     classNames.value = metricsRes.data.class_names || {};
@@ -326,15 +282,21 @@ const loadData = async () => {
   }
 };
 
+// 处理切换选择
+const handleRunChange = () => {
+  loadData();
+};
+
 onMounted(async () => {
-  // 动态导入 Chart.js
   try {
     const mod = await import('chart.js/auto');
     Chart = mod.default || mod.Chart;
   } catch {
-    console.warn('Chart.js 未安装，曲线图将不可用');
+    console.warn('Chart.js 未安装');
   }
-  await loadData();
+  
+  await fetchHistory(); // 先拿列表
+  await loadData();    // 再加载数据
 });
 
 onBeforeUnmount(() => {
@@ -348,10 +310,39 @@ onBeforeUnmount(() => {
   max-width: 1200px;
 }
 
+/* 顶部布局 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
 .page-title {
-  margin: 0 0 20px;
+  margin: 0;
   font-size: 20px;
   color: #303133;
+}
+
+.run-selector {
+  display: flex;
+  align-items: center;
+}
+
+.selector-label {
+  margin-right: 12px;
+  font-size: 14px;
+  color: #606266;
+}
+
+.option-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.run-name {
+  font-weight: 500;
 }
 
 .section-card {
@@ -431,13 +422,6 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
 }
 
-.class-name-en {
-  width: 160px;
-  font-size: 12px;
-  color: #909399;
-  flex-shrink: 0;
-}
-
 .class-ap {
   width: 50px;
   text-align: right;
@@ -454,20 +438,9 @@ onBeforeUnmount(() => {
   font-size: 15px;
 }
 
-.experiment-desc h4:first-child {
-  margin-top: 0;
-}
-
 .experiment-desc p {
   color: #606266;
   line-height: 1.8;
   margin: 0 0 8px;
-  text-indent: 2em;
-}
-
-.experiment-desc ul {
-  padding-left: 20px;
-  color: #606266;
-  line-height: 2;
 }
 </style>

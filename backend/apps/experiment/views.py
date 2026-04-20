@@ -21,14 +21,24 @@ from rest_framework.views import APIView
 from utils.authentication import JWTAuthentication
 
 # 训练结果根目录
-TRAIN_RUNS_DIR = settings.BASE_DIR.parent / 'runs' / 'train'
+TRAIN_RUNS_DIR = settings.BASE_DIR.parent / 'runs'  / 'detect'/ 'runs' / 'train'
 YOLO_CONFIG_DIR = settings.BASE_DIR.parent / 'yolo' / 'configs'
 
 
-def _find_latest_run():
-    """查找最新的训练结果目录"""
+def _get_run_dir(run_name=None):
+    """
+    根据名称获取指定的训练目录；如果未指定或不存在，则回退到获取最新目录
+    """
     if not TRAIN_RUNS_DIR.exists():
         return None
+
+    # 如果指定了 run_name，尝试查找
+    if run_name:
+        target_dir = TRAIN_RUNS_DIR / run_name
+        if target_dir.exists() and target_dir.is_dir():
+            return target_dir
+
+    # 默认回退：查找最新
     runs = sorted(
         [d for d in TRAIN_RUNS_DIR.iterdir() if d.is_dir()],
         key=lambda p: p.stat().st_mtime,
@@ -103,11 +113,13 @@ def _collect_images(run_dir):
 
 
 class ExperimentMetricsView(APIView):
-    """获取模型训练/评估的核心指标"""
     authentication_classes = [JWTAuthentication]
 
     def get(self, request):
-        run_dir = _find_latest_run()
+        # 接收可选的 run 参数
+        run_name = request.GET.get('run')
+        run_dir = _get_run_dir(run_name)
+
         if not run_dir:
             data_config = _get_data_config()
             return Response({
@@ -200,11 +212,13 @@ class ExperimentMetricsView(APIView):
 
 
 class ExperimentTrainCurvesView(APIView):
-    """获取训练过程曲线数据 (每个 epoch 的指标)"""
     authentication_classes = [JWTAuthentication]
 
     def get(self, request):
-        run_dir = _find_latest_run()
+        # 接收可选的 run 参数
+        run_name = request.GET.get('run')
+        run_dir = _get_run_dir(run_name)
+
         if not run_dir:
             return Response({
                 'code': 200,
@@ -297,29 +311,96 @@ class ModelInfoView(APIView):
     authentication_classes = [JWTAuthentication]
 
     def get(self, request):
-        model_path = settings.YOLO_MODEL_PATH
-        model_exists = os.path.exists(model_path)
-
         data_config = _get_data_config()
-        run_dir = _find_latest_run()
+
+        # 获取当前选中的运行记录名称 (例如: 'thesis_optimized')
+        run_name = request.GET.get('run')
+        run_dir = _get_run_dir(run_name)
         args = _parse_args_yaml(run_dir) if run_dir else {}
 
-        # 获取模型文件信息
+        # 项目根目录 (根据你的截图，BASE_DIR.parent 就是 plant-disease-detectio)
+        project_root = settings.BASE_DIR.parent
+
+        model_exists = False
+        model_path = None
+        # 默认展示 args 里的基础预训练模型名，如果有具体的 pt 文件会覆盖它
+        display_model_name = args.get('model', 'yolo11n.pt')
+
+        # --- 核心：根据训练记录名称动态拼接模型路径 ---
+        if run_name:
+            # 方案 A: 你的标准路径 -> 根目录/model/[run_name].pt
+            target_path = project_root / 'model' / f'{run_name}.pt'
+
+            # 方案 B: YOLO 默认保存路径 -> runs/.../[run_name]/weights/best.pt
+            backup_path = run_dir / 'weights' / 'best.pt' if run_dir else None
+
+            # 优先检查 model 目录下的同名文件
+            if target_path.exists():
+                model_path = target_path
+                model_exists = True
+                display_model_name = target_path.name  # 例如: thesis_optimized.pt
+
+            # 其次检查 runs 目录下的 best.pt
+            elif backup_path and backup_path.exists():
+                model_path = backup_path
+                model_exists = True
+                display_model_name = f"{run_name} (runs目录下)"
+
+            # 如果都没找到，假定目标路径是 target_path，用于前端排错
+            else:
+                model_path = target_path
+                display_model_name = f"{run_name}.pt (未找到文件)"
+        else:
+            # 如果没有选择具体的记录，使用全局默认路径
+            # 优先级 1：检查 settings.py 中是否明确配置了 YOLO_MODEL_PATH 且文件真实存在
+            yolo_path_str = getattr(settings, 'YOLO_MODEL_PATH', None)
+
+            if yolo_path_str and Path(yolo_path_str).exists():
+                model_path = Path(yolo_path_str)
+                model_exists = True
+                display_model_name = model_path.name
+            else:
+                # 优先级 2：智能扫描项目根目录下的 model 文件夹
+                model_dir = project_root / 'model'
+
+                if model_dir.exists() and model_dir.is_dir():
+                    # 获取该目录下所有的 .pt 权重文件
+                    pt_files = list(model_dir.glob('*.pt'))
+
+                    if pt_files:
+                        # 策略：如果文件夹里有多个模型，按文件的最后修改时间排序，自动选择最新放进去的那个
+                        pt_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+                        model_path = pt_files[0]
+                        model_exists = True
+                        display_model_name = model_path.name
+                    else:
+                        # 降级 1：model 文件夹存在，但里面没有 .pt 文件
+                        model_path = model_dir / '未找到模型.pt'
+                        model_exists = False
+                        display_model_name = "未检测到模型文件"
+                else:
+                    # 降级 2：连 model 文件夹都不存在
+                    model_path = project_root / 'model' / '目录不存在.pt'
+                    model_exists = False
+                    display_model_name = "模型目录缺失"
+
+        # 构造返回给前端的模型信息
         model_info = {
             'model_loaded': model_exists,
-            'model_path': str(model_path),
-            'model_version': args.get('model', 'yolo11n.pt'),
+            'model_path': str(model_path).replace(str(project_root), ''),  # 截取相对路径，方便前端好看
+            'model_version': display_model_name,
             'num_classes': data_config.get('nc', 0),
             'class_names': data_config.get('names', {}),
             'class_names_cn': data_config.get('names_cn', {}),
             'input_size': args.get('imgsz', 640),
         }
 
+        # 如果模型文件真实存在，计算其大小
         if model_exists:
-            file_size = os.path.getsize(model_path)
+            file_size = model_path.stat().st_size
             model_info['file_size_mb'] = round(file_size / (1024 * 1024), 2)
 
-        # 有训练记录时附加训练信息
+        # 附加训练相关的基础信息
         if run_dir:
             model_info['has_train_records'] = True
             model_info['latest_run'] = run_dir.name
