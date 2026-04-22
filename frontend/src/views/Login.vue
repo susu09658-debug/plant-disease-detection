@@ -150,10 +150,11 @@
 
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElAlert, ElMessage } from 'element-plus';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '../store/user';
 import { getCaptcha, register as apiRegister, resetPassword } from '../api/user';
+import { el } from 'element-plus/es/locale/index.mjs';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -170,9 +171,8 @@ const registerForm = reactive({ username: '', nickname: '', phone: '', password:
 
 const captchaImage = ref('');
 const captchaToken = ref('');
-const loginFailCount = ref(0);
-const isLocked = ref(false);
-const lockEndTime = ref(0);
+// 加上这一行 ✅
+const userLockStatus = reactive({});
 
 const showForgotDialog = ref(false);
 const loadingReset = ref(false);
@@ -293,9 +293,11 @@ const handleResetPassword = async () => {
         showForgotDialog.value = false;
         forgotFormRef.value?.resetFields();
     } catch (error) {
-        const msg = error?.response?.data?.msg || error.message || '密码重置失败，请检查输入信息或稍后重试';
-        ElMessage.error(msg);
-        refreshForgotCaptcha();
+    loginFailCount.value += 1;
+    if (loginFailCount.value >= 5) startLock();
+    // const msg = error?.response?.data?.msg || error.message || '登录失败...';
+    // ElMessage.error(msg); // 注释掉这行，把报错的活儿全交给刚才的 Axios 拦截器
+    refreshCaptcha();
     } finally {
         loadingReset.value = false;
     }
@@ -305,32 +307,37 @@ watch(showForgotDialog, (val) => {
     if (val) refreshForgotCaptcha();
 });
 
-const startLock = () => {
-    isLocked.value = true;
-    lockEndTime.value = Date.now() + 60_000;
-    ElMessage.error('错误次数过多，已锁定 60 秒');
-    const timer = setInterval(() => {
-        if (Date.now() >= lockEndTime.value) {
-            isLocked.value = false;
-            loginFailCount.value = 0;
-            clearInterval(timer);
-            ElMessage.info('登录已解锁，请重试');
-        }
-    }, 1000);
-};
-
+//  贴入全新的方法 
 const handleLogin = async () => {
-    if (isLocked.value) {
-        const left = Math.max(0, Math.ceil((lockEndTime.value - Date.now()) / 1000));
-        ElMessage.warning(`登录被暂时锁定，还剩 ${left} 秒`);
+    const currentUsername = loginForm.username;
+    
+    // 如果还没填用户名，直接让表单校验去提示必填项
+    if (!currentUsername) {
+        return loginFormRef.value?.validate();
+    }
+
+    const now = Date.now();
+
+    // 1. 初始化当前账号的档案
+    if (!userLockStatus[currentUsername]) {
+        userLockStatus[currentUsername] = { count: 0, lockedUntil: 0 };
+    }
+    const status = userLockStatus[currentUsername];
+
+    // 2. 拦截：判断这个特定账号是否还在锁定期
+    if (status.lockedUntil > now) {
+        const leftSeconds = Math.ceil((status.lockedUntil - now) / 1000);
+        ElMessage.warning(`账号 [${currentUsername}] 处于锁定状态，还剩 ${leftSeconds} 秒`);
         return;
     }
 
+    // 3. 走原有的表单校验
     const valid = await loginFormRef.value?.validate().catch(() => false);
     if (!valid) return;
 
     loadingLogin.value = true;
     try {
+        // 原有的发送请求逻辑
         await userStore.login({
             username: loginForm.username,
             password: loginForm.password,
@@ -338,20 +345,34 @@ const handleLogin = async () => {
             captcha_token: captchaToken.value,
         });
 
+        // 登录成功！把这个账号的错误记录清零
+        status.count = 0;
+        status.lockedUntil = 0;
+
         if (loginForm.remember) {
             setCookie('rememberedUser', encrypt(loginForm.username), 7);
         } else {
             removeCookie('rememberedUser');
         }
 
-        loginFailCount.value = 0;
         ElMessage.success('登录成功，正在跳转...');
         router.push({ name: 'dashboard' });
     } catch (error) {
-        loginFailCount.value += 1;
-        if (loginFailCount.value >= 5) startLock();
-        const msg = error?.response?.data?.msg || error.message || '登录失败，请检查用户ID和密码';
-        ElMessage.error(msg);
+        // 登录失败！给这个账号记一次过
+        status.count += 1;
+
+        if (status.count >= 5) {
+            // 记满 5 次，锁定 60 秒
+            status.lockedUntil = now + 60_000;
+            status.count = 0; // 计次清零，方便 60 秒后重新算
+            ElMessage.error(`账号 [${currentUsername}] 错误次数过多，已锁定 60 秒`);
+        } else {
+            // 如果你按照前面说的配置了 axios 全局拦截器，这里其实可以把下面这行注掉，
+            // 避免和全局的 axios 报错重复弹窗。如果没有配拦截器，就留着这行。
+            // const msg = error?.response?.data?.msg || error.message || '登录失败，请检查用户ID和密码';
+            // ElMessage.error(msg);
+        }
+
         refreshCaptcha();
     } finally {
         loadingLogin.value = false;
