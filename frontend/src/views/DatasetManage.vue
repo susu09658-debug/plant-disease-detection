@@ -1,13 +1,31 @@
 <template>
   <div class="dataset-page">
-    <h2 class="page-title">📁 数据集管理</h2>
-
+    <div class="page-header flex-header">
+      <h2 class="page-title">📁 数据集管理</h2>
+      <div class="dataset-selector">
+        <span class="selector-label">切换数据集:</span>
+        <el-select 
+          v-model="datasetPath" 
+          placeholder="请选择数据集" 
+          @change="loadData"
+          style="width: 240px"
+        >
+          <el-option
+            v-for="item in datasetOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
+        <el-button type="primary" @click="loadData" :loading="loading" style="margin-left: 10px;" icon="Refresh" circle />
+      </div>
+    </div>
     <!-- 数据集概览 -->
     <el-card shadow="never" class="section-card">
       <template #header>
         <div class="card-header-flex">
           <span class="card-title">📊 数据集概览</span>
-          <el-tag type="primary" size="small">FieldPlant</el-tag>
+          <el-tag type="primary" size="small">{{ currentDatasetName }}</el-tag>
         </div>
       </template>
       <el-row :gutter="16">
@@ -144,7 +162,12 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { getDatasetOverview, getDatasetSplitInfo } from '../api/dataset';
+import { getDatasetOverview, getDatasetSplitInfo, getDatasetList } from '../api/dataset';
+
+const datasetPath = ref(''); 
+const datasetOptions = ref([]); // 新增：存放后端返回的数据集目录列表
+const loading = ref(false);
+
 
 const overview = ref({});
 const classDetails = ref([]);
@@ -173,22 +196,58 @@ const getBarColor = (count) => {
   return '#c0c4cc';
 };
 
-const loadData = async () => {
+
+
+// 计算属性：用于在 Tag 中优雅地展示当前选中的数据集名称
+const currentDatasetName = computed(() => {
+  const current = datasetOptions.value.find(item => item.value === datasetPath.value);
+  return current ? current.label : (overview.value.dataset_name || '未知数据集');
+});
+
+// 新增：初始化加载可用数据集列表
+const initDatasetList = async () => {
   try {
+    const res = await getDatasetList();
+    if (res.data && res.data.length > 0) {
+      datasetOptions.value = res.data;
+      // 默认选中第一个数据集（例如 FieldPlant）
+      datasetPath.value = res.data[0].value; 
+      // 拿到路径后再请求具体的数据概览
+      await loadData();
+    } else {
+      // 如果目录下空空如也
+      console.warn('Datasets 目录下没有找到任何数据集');
+    }
+  } catch (e) {
+    console.error('获取数据集列表失败', e);
+  }
+};
+
+const loadData = async () => {
+  if (!datasetPath.value) return; // 如果没有路径则不请求
+  loading.value = true;
+  try {
+    const currentPath = datasetPath.value;
+    
     const [overviewRes, splitRes] = await Promise.all([
-      getDatasetOverview(),
-      getDatasetSplitInfo(),
+      getDatasetOverview(currentPath),
+      getDatasetSplitInfo(currentPath),
     ]);
+    
     overview.value = overviewRes.data || {};
     classDetails.value = overviewRes.data?.class_details || [];
     splits.value = splitRes.data?.splits || {};
+    
   } catch (e) {
     console.error('加载数据集信息失败', e);
+  } finally {
+    loading.value = false;
   }
 };
 
 onMounted(() => {
-  loadData();
+  // 从加载写死的路径改为：先加载列表 -> 自动选中第一个 -> 请求数据
+  initDatasetList();
 });
 </script>
 
@@ -367,5 +426,27 @@ onMounted(() => {
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 13px;
+}
+
+.flex-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  margin: 0; /* 清除原有 margin 以配合 flex 布局 */
+}
+
+.dataset-selector {
+  display: flex;
+  align-items: center;
+}
+
+.selector-label {
+  font-size: 14px;
+  color: #606266;
+  margin-right: 12px;
 }
 </style>
