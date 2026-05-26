@@ -5,7 +5,6 @@
     <el-card shadow="never" class="upload-card">
       <template #header><span class="card-title">上传植物图片</span></template>
 
-      <!-- 模型选择 -->
       <div class="model-select-row">
         <span class="model-label">检测模型：</span>
         <el-select
@@ -46,7 +45,6 @@
       </el-upload>
     </el-card>
 
-    <!-- 检测中 loading -->
     <el-card v-if="detecting" shadow="never" class="result-card">
       <div class="detecting-box">
         <el-icon class="is-loading spin-icon"><Loading /></el-icon>
@@ -54,7 +52,6 @@
       </div>
     </el-card>
 
-    <!-- 检测结果 -->
     <el-card v-if="result" shadow="never" class="result-card">
       <template #header><span class="card-title">检测结果</span></template>
 
@@ -91,9 +88,12 @@
         <el-descriptions-item v-if="result.model_used" label="使用模型">
           <el-tag size="small" type="info">{{ result.model_used }}</el-tag>
         </el-descriptions-item>
+
+        <el-descriptions-item v-if="result.inference_time !== undefined" label="推理耗时">
+          <el-tag size="small" type="warning">{{ result.inference_time }} ms</el-tag>
+        </el-descriptions-item>
       </el-descriptions>
 
-      <!-- 检测框详情 -->
       <div v-if="result.bbox_data && result.bbox_data.length > 1" class="bbox-section">
         <el-divider content-position="left">检测目标列表</el-divider>
         <el-table :data="result.bbox_data" size="small" border stripe>
@@ -184,8 +184,16 @@ const handleUpload = async ({ file }) => {
             formData.append('model_key', selectedModel.value);
         }
         const res = await uploadDetect(formData);
+        
+        // 直接将包含 inference_time 的后端响应赋给 result
         result.value = res.data;
-        ElMessage.success('检测完成！');
+        
+        // 弹窗提示时附带上纯推理耗时
+        if (result.value && result.value.inference_time !== undefined) {
+            ElMessage.success(`检测完成！核心推理耗时：${result.value.inference_time} ms`);
+        } else {
+            ElMessage.success('检测完成！');
+        }
     } catch (e) {
         ElMessage.error('检测失败，请重试');
     } finally {

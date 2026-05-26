@@ -1,5 +1,6 @@
 import os
 import uuid
+import time  # 新增：引入时间模块
 from pathlib import Path
 
 from django.conf import settings
@@ -11,7 +12,7 @@ from rest_framework.views import APIView
 from utils.authentication import JWTAuthentication
 from .models import DetectRecord
 from .serializers import DetectRecordSerializer
-from datetime import timedelta, datetime, time
+from datetime import timedelta, datetime, time as datetime_time
 
 class DetectUploadView(APIView):
     """图片上传与 YOLOv11 检测接口（支持选择不同模型）"""
@@ -37,9 +38,16 @@ class DetectUploadView(APIView):
 
         original_img_rel = f"uploads/{filename}"
 
-        # 调用 YOLOv11 推理（支持模型选择）
+        # ------------------ 新增：纯净模型推理计时开始 ------------------
+        start_time = time.time()
+
+        # 调用 YOLOv11 推理
         from utils.yolo_model import yolo_model
         result = yolo_model.detect(str(save_path), model_key=model_key)
+
+        # 计算推理耗时（秒转化为毫秒，取整数）
+        inference_time_ms = int((time.time() - start_time) * 1000)
+        # ------------------ 新增：纯净模型推理计时结束 ------------------
 
         # 保存检测记录
         record = DetectRecord.objects.create(
@@ -64,6 +72,7 @@ class DetectUploadView(APIView):
                     settings.MEDIA_URL + result.get('result_image_path', original_img_rel)
                 ),
                 'model_used': result.get('model_used', ''),
+                'inference_time': inference_time_ms,  # 新增：将推理时间传给前端
             }
         })
 
@@ -166,15 +175,15 @@ class DetectStatsView(APIView):
             target_date = today - timedelta(days=i)
 
             # 构造一天的起点 (00:00:00) 和终点 (23:59:59)
-            start_datetime = timezone.make_aware(datetime.combine(target_date, time.min))
-            end_datetime = timezone.make_aware(datetime.combine(target_date, time.max))
+            start_datetime = timezone.make_aware(datetime.combine(target_date, datetime_time.min))
+            end_datetime = timezone.make_aware(datetime.combine(target_date, datetime_time.max))
 
             # 使用 range 范围查询替代原先的 __date 查询
             count = queryset.filter(detect_time__range=(start_datetime, end_datetime)).count()
             trend.append({'date': str(target_date), 'count': count})
 
         # 今日检测数 (同样修改为范围查询)
-        today_start = timezone.make_aware(datetime.combine(today, time.min))
+        today_start = timezone.make_aware(datetime.combine(today, datetime_time.min))
         # 只要大于等于今天的 00:00:00 即可
         today_count = queryset.filter(detect_time__gte=today_start).count()
 
