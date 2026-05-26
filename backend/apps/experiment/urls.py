@@ -5,6 +5,8 @@ from .views import (
     ModelInfoView,
     TrainHistoryView,
     TrainConfigView,
+    DeployModelView,
+    StrategyConfigsView,
 )
 
 urlpatterns = [
@@ -13,4 +15,6 @@ urlpatterns = [
     path('model-info/', ModelInfoView.as_view(), name='model_info'),
     path('train-history/', TrainHistoryView.as_view(), name='train_history'),
     path('train-config/', TrainConfigView.as_view(), name='train_config'),
+    path('deploy/', DeployModelView.as_view(), name='deploy_model'),
+    path('strategies/', StrategyConfigsView.as_view(), name='strategy_configs'), #
 ]

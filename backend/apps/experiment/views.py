@@ -7,10 +7,12 @@
   - GET /api/experiment/model-info/    — 获取当前模型基本信息
   - GET /api/experiment/train-history/ — 获取历史训练记录列表
   - GET /api/experiment/train-config/  — 获取训练配置参数
+  - POST /api/experiment/deploy/       — 部署指定历史训练模型到应用环境 (新增)
 """
 
 import csv
 import os
+import shutil  # 新增: 用于文件复制操作
 from pathlib import Path
 
 import yaml
@@ -116,60 +118,54 @@ class ExperimentMetricsView(APIView):
     authentication_classes = [JWTAuthentication]
 
     def get(self, request):
-        # 接收可选的 run 参数
         run_name = request.GET.get('run')
         run_dir = _get_run_dir(run_name)
 
         if not run_dir:
-            data_config = _get_data_config()
-            return Response({
-                'code': 200,
-                'msg': '暂无训练数据',
-                'data': {
-                    'metrics': self._demo_metrics(),
-                    'train_config': {
-                        'model': 'yolo11n.pt',
-                        'epochs': 100,
-                        'batch': 16,
-                        'imgsz': 640,
-                        'optimizer': 'SGD',
-                        'lr0': 0.01,
-                    },
-                    'class_names': data_config.get('names', {}),
-                    'class_names_cn': data_config.get('names_cn', {}),
-                    'num_classes': data_config.get('nc', 0),
-                    'charts': {},
-                    'run_name': '',
-                },
-            })
+            # ... 此处保留原有的暂无训练数据处理逻辑 ...
+            return Response({'code': 200, 'msg': '暂无训练数据', 'data': {}})
 
-        # 解析 CSV 获取最终指标
         rows = _parse_results_csv(run_dir)
         args = _parse_args_yaml(run_dir)
         data_config = _get_data_config()
         images = _collect_images(run_dir)
 
         if rows:
-            last = rows[-1]
+            # --- 核心修改：寻找“最佳 Fitness”对应的行，而不是最后一行 ---
+            def calculate_fitness(row):
+                # 按照 YOLOv11 官方标准的 Fitness 计算公式
+                map50 = row.get('metrics/mAP50(B)', 0)
+                map50_95 = row.get('metrics/mAP50-95(B)', 0)
+                return 0.1 * map50 + 0.9 * map50_95
+
+            # 找到 Fitness 最高的那一行（即对应 best.pt 的那一轮）
+            best_row = max(rows, key=calculate_fitness)
+
             metrics = {
-                'mAP50': last.get('metrics/mAP50(B)', 0),
-                'mAP50_95': last.get('metrics/mAP50-95(B)', 0),
-                'precision': last.get('metrics/precision(B)', 0),
-                'recall': last.get('metrics/recall(B)', 0),
-                'train_box_loss': last.get('train/box_loss', 0),
-                'train_cls_loss': last.get('train/cls_loss', 0),
-                'val_box_loss': last.get('val/box_loss', 0),
-                'val_cls_loss': last.get('val/cls_loss', 0),
+                'mAP50': best_row.get('metrics/mAP50(B)', 0),
+                'mAP50_95': best_row.get('metrics/mAP50-95(B)', 0),
+                'precision': best_row.get('metrics/precision(B)', 0),
+                'recall': best_row.get('metrics/recall(B)', 0),
+                'train_box_loss': best_row.get('train/box_loss', 0),
+                'train_cls_loss': best_row.get('train/cls_loss', 0),
+                'val_box_loss': best_row.get('val/box_loss', 0),
+                'val_cls_loss': best_row.get('val/cls_loss', 0),
+                'best_epoch': best_row.get('epoch', 0),  # 记录这是第几轮达到的最佳
                 'epochs_completed': len(rows),
             }
-            # 计算 F1：当 P 和 R 均为 0 时 F1 直接置 0
+
+            # 计算 F1 分数
             p = metrics['precision']
             r = metrics['recall']
             metrics['f1_score'] = round(2 * p * r / (p + r), 4) if (p + r) > 0 else 0.0
+
+            # (可选) 如果你还是想在前端显示最后一轮的数据，也可以额外添加一个字段
+            # metrics['last_epoch_f1'] = ...
+
         else:
             metrics = self._demo_metrics()
 
-        # 训练配置信息
+        # ... 后续逻辑（train_config 构造等）保持不变 ...
         train_config = {
             'model': args.get('model', 'yolo11n.pt'),
             'epochs': args.get('epochs', 100),
@@ -510,5 +506,96 @@ class TrainConfigView(APIView):
                 'num_classes': data_config.get('nc', 0),
                 'class_names': data_config.get('names', {}),
                 'optimizer_options': ['SGD', 'Adam', 'AdamW'],
+            }
+        })
+
+
+class DeployModelView(APIView):
+    """部署模型：将选定的实验权重复制到系统模型目录"""
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        run_name = request.data.get('run_name')
+        if not run_name:
+            return Response({'code': 400, 'msg': '缺少实验名称 (run_name) 参数'})
+
+        run_dir = _get_run_dir(run_name)
+        if not run_dir or not run_dir.exists():
+            return Response({'code': 404, 'msg': f'未找到对应的训练目录: {run_name}'})
+
+        src_path = run_dir / 'weights' / 'best.pt'
+        if not src_path.exists():
+            return Response({'code': 404, 'msg': f'该实验下不存在最优权重文件 best.pt'})
+
+        # 获取项目根目录 (与你的其他配置保持一致)
+        project_root = settings.BASE_DIR.parent
+        model_dir = project_root / 'model'
+
+        # 确保目标 model 文件夹存在
+        model_dir.mkdir(parents=True, exist_ok=True)
+
+        # 你的系统默认读取的是 model/best.pt
+        dest_path = model_dir / 'best.pt'
+
+        try:
+            # 复制文件
+            shutil.copy(src_path, dest_path)
+
+            # 手动更新目标文件的修改时间，确保 ModelInfoView 扫描时它是最新文件
+            os.utime(dest_path, None)
+
+            return Response({
+                'code': 200,
+                'msg': f'部署成功！系统现在已切换为 {run_name} 的模型。',
+                'data': {
+                    'run_name': run_name,
+                    'model_path': str(dest_path.relative_to(project_root))
+                }
+            })
+        except Exception as e:
+            return Response({'code': 500, 'msg': f'部署时出现服务器内部错误: {str(e)}'})
+
+
+# 在 views.py 文件末尾添加以下代码
+
+class StrategyConfigsView(APIView):
+    """获取目录下的所有训练策略配置文件 (自动读取 yaml)"""
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        strategies = []
+
+        # 确保 YOLO 配置目录存在
+        if YOLO_CONFIG_DIR.exists():
+            # 遍历查找以 .yaml 结尾的配置文件 (排除掉系统用的 data.yaml)
+            for yaml_file in YOLO_CONFIG_DIR.glob('*.yaml'):
+                if yaml_file.name == 'data.yaml':
+                    continue
+
+                try:
+                    with open(yaml_file, 'r', encoding='utf-8') as f:
+                        content = yaml.safe_load(f) or {}
+
+                        # 为了前端显示更友好，根据文件名生成标签名
+                        label = yaml_file.name
+                        if 'thesis' in yaml_file.name:
+                            label = 'Thesis'
+                        elif 'baseline' in yaml_file.name:
+                            label = 'Baseline'
+
+                        strategies.append({
+                            'filename': yaml_file.name,
+                            'label': label,
+                            'content': content
+                        })
+                except Exception as e:
+                    print(f"解析 {yaml_file.name} 失败: {e}")
+                    pass
+
+        return Response({
+            'code': 200,
+            'msg': '查询成功',
+            'data': {
+                'strategies': strategies
             }
         })

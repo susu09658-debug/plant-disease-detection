@@ -14,3 +14,9 @@ export const getTrainHistory = () => request.get('/experiment/train-history/');
 
 // 获取训练配置参数
 export const getTrainConfig = () => request.get('/experiment/train-config/');
+
+// 部署模型接口
+export const deployModel = (data) => request.post('/experiment/deploy/', data);
+
+// 获取可用的策略配置列表
+export const getStrategyConfigs = () => request.get('/experiment/strategies/');
